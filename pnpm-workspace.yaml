@@ -1,0 +1,16 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+allowBuilds:
+  '@scarf/scarf': set this to true or false
+  sharp: set this to true or false
+
+# 允许这些依赖运行安装脚本（Prisma 需下载查询引擎，NestJS core/scarf 的 postinstall）
+onlyBuiltDependencies:
+  - "@nestjs/core"
+  - "@prisma/client"
+  - "@prisma/engines"
+  - "@scarf/scarf"
+  - prisma
+  - sharp

@@ -1,0 +1,25 @@
+{
+  "nav": {
+    "products": "Products",
+    "services": "Services",
+    "membership": "Membership",
+    "rental": "Rental",
+    "blog": "Blog",
+    "about": "About",
+    "book": "Book Now"
+  },
+  "home": {
+    "hero": {
+      "title": "Smarter Lawns, Effortlessly",
+      "subtitle": "Robotic mowing, professional installation, and year-round care for your property.",
+      "cta": "Free Assessment"
+    },
+    "sections": {
+      "intro": "Welcome to DS SmartLawn",
+      "placeholder": "This section is rendered from the CMS. Content is being prepared."
+    }
+  },
+  "footer": {
+    "rights": "DS SmartLawn Service LLC. All rights reserved."
+  }
+}

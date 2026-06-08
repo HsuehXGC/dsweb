@@ -1,0 +1,25 @@
+{
+  "nav": {
+    "products": "产品",
+    "services": "服务",
+    "membership": "会员订阅",
+    "rental": "租赁",
+    "blog": "博客",
+    "about": "关于我们",
+    "book": "立即预约"
+  },
+  "home": {
+    "hero": {
+      "title": "智慧草坪，轻松打理",
+      "subtitle": "机器人割草、专业安装，以及全年无忧的草坪养护服务。",
+      "cta": "免费评估"
+    },
+    "sections": {
+      "intro": "欢迎来到 DS SmartLawn",
+      "placeholder": "本模块内容由 CMS 提供，正在准备中。"
+    }
+  },
+  "footer": {
+    "rights": "DS SmartLawn Service LLC. 版权所有。"
+  }
+}

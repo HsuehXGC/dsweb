@@ -1,0 +1,904 @@
+// ============================================================
+// DSweb 数据库 Schema —— 对应需求文档 第三章「数据库实体模型」
+// 设计原则：软删除(deleted_at) / 时间戳(created_at,updated_at) /
+//          对外 UUID + 内部自增 ID / 外键与约束在 DB 层强制 / 关键字段建索引
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// M0 账号与权限 (IAM)
+// ============================================================
+
+/// 内部账号（管理员、销售、客服、技师等），与终端 customers 分离
+model User {
+  id           BigInt    @id @default(autoincrement())
+  uuid         String    @unique @default(uuid()) @db.Uuid
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  firstName    String?   @map("first_name")
+  lastName     String?   @map("last_name")
+  phone        String?
+  isActive     Boolean   @default(true) @map("is_active")
+  lastLoginAt  DateTime? @map("last_login_at")
+  roleId       BigInt    @map("role_id")
+  role         Role      @relation(fields: [roleId], references: [id])
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
+
+  auditLogs   AuditLog[]
+  technician  Technician?
+  refreshSessions Session[]
+
+  @@index([roleId])
+  @@index([deletedAt])
+  @@map("users")
+}
+
+/// 角色定义（系统预置 10 个标准角色，可在后台增删改）
+model Role {
+  id          BigInt   @id @default(autoincrement())
+  code        String   @unique // super_admin / sales / ...
+  name        String
+  description String?
+  isSystem    Boolean  @default(false) @map("is_system") // 系统预置不可删
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  users       User[]
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+/// 细粒度权限点：resource.action（如 customers.read）
+model Permission {
+  id        BigInt   @id @default(autoincrement())
+  resource  String // customers / orders / cms ...
+  action    String // read / write / delete / read_own / approve ...
+  code      String   @unique // "customers.read"
+  createdAt DateTime @default(now()) @map("created_at")
+
+  roles RolePermission[]
+
+  @@unique([resource, action])
+  @@map("permissions")
+}
+
+/// 角色-权限关联
+model RolePermission {
+  roleId       BigInt     @map("role_id")
+  permissionId BigInt     @map("permission_id")
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+/// 审计日志：所有写操作记录
+model AuditLog {
+  id        BigInt   @id @default(autoincrement())
+  userId    BigInt?  @map("user_id")
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String // create / update / delete / approve ...
+  entity    String // 表名，如 "customers"
+  entityId  String?  @map("entity_id")
+  changes   Json? // 变更前后 diff
+  ip        String?
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+/// JWT Refresh 会话（支持强制下线）
+model Session {
+  id           BigInt   @id @default(autoincrement())
+  userId       BigInt   @map("user_id")
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshToken String   @unique @map("refresh_token")
+  userAgent    String?  @map("user_agent")
+  ip           String?
+  expiresAt    DateTime @map("expires_at")
+  revokedAt    DateTime? @map("revoked_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+// ============================================================
+// M1 CMS 内容管理
+// ============================================================
+
+enum PublishStatus {
+  draft
+  published
+  archived
+}
+
+/// 页面（主页、产品页、关于我们等）
+model Page {
+  id          BigInt        @id @default(autoincrement())
+  uuid        String        @unique @default(uuid()) @db.Uuid
+  slug        String        @unique // "home" / "about"
+  title       String
+  status      PublishStatus @default(draft)
+  seoTitle    String?       @map("seo_title")
+  seoDesc     String?       @map("seo_desc")
+  publishedAt DateTime?     @map("published_at")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+  deletedAt   DateTime?     @map("deleted_at")
+
+  sections Section[]
+
+  @@index([status])
+  @@map("pages")
+}
+
+/// 页面 Section（如主页的 9 个模块），按 sort 排序
+model Section {
+  id        BigInt   @id @default(autoincrement())
+  pageId    BigInt   @map("page_id")
+  page      Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  type      String // hero / multicolumn / image_text / faq / cta_band / weekly_visit ...
+  sort      Int      @default(0)
+  isVisible Boolean  @default(true) @map("is_visible")
+  config    Json? // section 级配置
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  blocks Block[]
+
+  @@index([pageId, sort])
+  @@map("sections")
+}
+
+/// Block：Section 内的内容块，内容按 en/zh 双语存于 content JSON
+model Block {
+  id        BigInt   @id @default(autoincrement())
+  sectionId BigInt   @map("section_id")
+  section   Section  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  type      String // heading / paragraph / image / button ...
+  sort      Int      @default(0)
+  content   Json // { en: {...}, zh: {...} }
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([sectionId, sort])
+  @@map("blocks")
+}
+
+/// 博客文章
+model Post {
+  id          BigInt        @id @default(autoincrement())
+  uuid        String        @unique @default(uuid()) @db.Uuid
+  slug        String        @unique
+  status      PublishStatus @default(draft)
+  category    String?
+  tags        Json? // string[]
+  coverMediaId BigInt?      @map("cover_media_id")
+  content     Json // { en, zh } 富文本
+  publishedAt DateTime?     @map("published_at")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+  deletedAt   DateTime?     @map("deleted_at")
+
+  @@index([status])
+  @@index([category])
+  @@map("posts")
+}
+
+/// 字段级翻译对照表（产品名、动态内容等）
+model Translation {
+  id        BigInt   @id @default(autoincrement())
+  namespace String // "product" / "service" ...
+  entityId  String   @map("entity_id")
+  field     String
+  locale    String // en / zh
+  value     String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([namespace, entityId, field, locale])
+  @@map("translations")
+}
+
+/// 媒体库
+model Media {
+  id        BigInt   @id @default(autoincrement())
+  uuid      String   @unique @default(uuid()) @db.Uuid
+  type      String // image / video / pdf
+  url       String
+  mimeType  String?  @map("mime_type")
+  size      Int?
+  width     Int?
+  height    Int?
+  folder    String?
+  tags      Json?
+  alt       Json? // { en, zh }
+  createdAt DateTime @default(now()) @map("created_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@index([type])
+  @@index([folder])
+  @@map("media")
+}
+
+/// FAQ / 知识库文章（公共 KB 与网站 FAQ 共享）
+model KbArticle {
+  id        BigInt        @id @default(autoincrement())
+  uuid      String        @unique @default(uuid()) @db.Uuid
+  category  String?
+  isPublic  Boolean       @default(true) @map("is_public") // 公共 KB vs 内部话术
+  status    PublishStatus @default(draft)
+  question  Json // { en, zh }
+  answer    Json // { en, zh }
+  sort      Int           @default(0)
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+  deletedAt DateTime?     @map("deleted_at")
+
+  @@index([category])
+  @@index([isPublic, status])
+  @@map("kb_articles")
+}
+
+// ============================================================
+// M2 CRM 客户关系
+// ============================================================
+
+/// 终端客户主档（含登录账号）
+model Customer {
+  id            BigInt    @id @default(autoincrement())
+  uuid          String    @unique @default(uuid()) @db.Uuid
+  email         String    @unique
+  phone         String?
+  firstName     String?   @map("first_name")
+  lastName      String?   @map("last_name")
+  passwordHash  String?   @map("password_hash")
+  locale        String    @default("en")
+  tags          Json?
+  source        String? // web / demo_day / referral
+  vipLevel      Int       @default(0) @map("vip_level")
+  lifetimeValue Decimal   @default(0) @map("lifetime_value") @db.Decimal(12, 2)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
+
+  properties    Property[]
+  devices       Device[]
+  orders        Order[]
+  subscriptions Subscription[]
+  deals         Deal[]
+  activities    Activity[]
+  workOrders    WorkOrder[]
+  appointments  Appointment[]
+  supportTickets SupportTicket[]
+  convertedFromLead Lead?
+
+  @@index([source])
+  @@index([deletedAt])
+  @@map("customers")
+}
+
+/// 尚未成交的线索
+model Lead {
+  id            BigInt    @id @default(autoincrement())
+  uuid          String    @unique @default(uuid()) @db.Uuid
+  email         String
+  phone         String?
+  firstName     String?   @map("first_name")
+  lastName      String?   @map("last_name")
+  source        String?
+  status        String    @default("new") // new / contacted / qualified / converted / lost
+  score         Int?
+  assignedToId  BigInt?   @map("assigned_to_id")
+  lostReason    String?   @map("lost_reason")
+  convertedCustomerId BigInt? @unique @map("converted_customer_id")
+  convertedCustomer   Customer? @relation(fields: [convertedCustomerId], references: [id])
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([assignedToId])
+  @@map("leads")
+}
+
+/// 客户地块档案
+model Property {
+  id         BigInt    @id @default(autoincrement())
+  uuid       String    @unique @default(uuid()) @db.Uuid
+  customerId BigInt    @map("customer_id")
+  customer   Customer  @relation(fields: [customerId], references: [id])
+  label      String?
+  street     String?
+  city       String?
+  state      String?
+  zip        String?
+  acres      Decimal?  @db.Decimal(8, 2)
+  slope      String? // flat / gentle / moderate / steep
+  soil       String?
+  terrain    String?
+  wifiStatus String?   @map("wifi_status")
+  notes      String?
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  workOrders WorkOrder[]
+
+  @@index([customerId])
+  @@index([zip])
+  @@map("properties")
+}
+
+/// 销售流水线机会
+model Deal {
+  id         BigInt   @id @default(autoincrement())
+  uuid       String   @unique @default(uuid()) @db.Uuid
+  customerId BigInt   @map("customer_id")
+  customer   Customer @relation(fields: [customerId], references: [id])
+  title      String
+  stage      String   @default("lead") // lead / contacted / assessment / quote / signed / delivered
+  amount     Decimal? @db.Decimal(12, 2)
+  ownerId    BigInt?  @map("owner_id") // 负责销售 user.id
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  quotes     Quote[]
+
+  @@index([customerId])
+  @@index([stage])
+  @@index([ownerId])
+  @@map("deals")
+}
+
+/// 客户沟通记录
+model Activity {
+  id         BigInt   @id @default(autoincrement())
+  customerId BigInt   @map("customer_id")
+  customer   Customer @relation(fields: [customerId], references: [id])
+  type       String // call / email / meeting / note
+  subject    String?
+  body       String?
+  userId     BigInt?  @map("user_id")
+  occurredAt DateTime @default(now()) @map("occurred_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([customerId])
+  @@map("activities")
+}
+
+/// 报价单
+model Quote {
+  id        BigInt   @id @default(autoincrement())
+  uuid      String   @unique @default(uuid()) @db.Uuid
+  number    String   @unique // QUO-2026-0001
+  dealId    BigInt?  @map("deal_id")
+  deal      Deal?    @relation(fields: [dealId], references: [id])
+  status    String   @default("draft") // draft / sent / accepted / rejected / expired
+  lineItems Json     @map("line_items")
+  subtotal  Decimal  @db.Decimal(12, 2)
+  tax       Decimal  @default(0) @db.Decimal(12, 2)
+  total     Decimal  @db.Decimal(12, 2)
+  validUntil DateTime? @map("valid_until")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([dealId])
+  @@index([status])
+  @@map("quotes")
+}
+
+// ============================================================
+// M3 ERP 资源管理
+// ============================================================
+
+enum ProductType {
+  one_time
+  subscription
+}
+
+model Product {
+  id          BigInt      @id @default(autoincrement())
+  uuid        String      @unique @default(uuid()) @db.Uuid
+  slug        String      @unique
+  name        String
+  type        ProductType @default(one_time)
+  description Json? // { en, zh }
+  specs       Json?
+  basePrice   Decimal     @map("base_price") @db.Decimal(12, 2)
+  isActive    Boolean     @default(true) @map("is_active")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+  deletedAt   DateTime?   @map("deleted_at")
+
+  skus Sku[]
+
+  @@index([type])
+  @@index([isActive])
+  @@map("products")
+}
+
+model Sku {
+  id        BigInt    @id @default(autoincrement())
+  productId BigInt    @map("product_id")
+  product   Product   @relation(fields: [productId], references: [id])
+  code      String    @unique
+  variant   Json? // { color, config }
+  price     Decimal?  @db.Decimal(12, 2)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  inventory  Inventory[]
+  orderItems OrderItem[]
+
+  @@index([productId])
+  @@map("skus")
+}
+
+model Warehouse {
+  id        BigInt   @id @default(autoincrement())
+  code      String   @unique
+  name      String
+  type      String   @default("main") // main / repair_parts / vehicle
+  createdAt DateTime @default(now()) @map("created_at")
+
+  inventory Inventory[]
+
+  @@map("warehouses")
+}
+
+model Inventory {
+  id          BigInt    @id @default(autoincrement())
+  skuId       BigInt    @map("sku_id")
+  sku         Sku       @relation(fields: [skuId], references: [id])
+  warehouseId BigInt    @map("warehouse_id")
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id])
+  available   Int       @default(0)
+  allocated   Int       @default(0)
+  inTransit   Int       @default(0) @map("in_transit")
+  lowWatermark Int      @default(0) @map("low_watermark")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@unique([skuId, warehouseId])
+  @@map("inventory")
+}
+
+model PurchaseOrder {
+  id         BigInt   @id @default(autoincrement())
+  number     String   @unique // PO-2026-0001
+  supplier   String
+  status     String   @default("draft") // draft / ordered / received / paid
+  lineItems  Json     @map("line_items")
+  total      Decimal  @db.Decimal(12, 2)
+  receivedAt DateTime? @map("received_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@map("purchase_orders")
+}
+
+enum OrderType {
+  one_time
+  subscription
+}
+
+model Order {
+  id              BigInt    @id @default(autoincrement())
+  uuid            String    @unique @default(uuid()) @db.Uuid
+  number          String    @unique // ORD-2026-0001
+  customerId      BigInt    @map("customer_id")
+  customer        Customer  @relation(fields: [customerId], references: [id])
+  type            OrderType @default(one_time)
+  status          String    @default("pending") // pending/paid/preparing/shipped/delivered/refunded/cancelled
+  subtotal        Decimal   @db.Decimal(12, 2)
+  tax             Decimal   @default(0) @db.Decimal(12, 2)
+  shipping        Decimal   @default(0) @db.Decimal(12, 2)
+  discount        Decimal   @default(0) @db.Decimal(12, 2)
+  total           Decimal   @db.Decimal(12, 2)
+  currency        String    @default("USD")
+  billingAddress  Json?     @map("billing_address")
+  shippingAddress Json?     @map("shipping_address")
+  paymentStatus   String?   @map("payment_status")
+  subscriptionId  BigInt?   @map("subscription_id")
+  subscription    Subscription? @relation(fields: [subscriptionId], references: [id])
+  ownerId         BigInt?   @map("owner_id") // 归属销售
+  placedAt        DateTime  @default(now()) @map("placed_at")
+  paidAt          DateTime? @map("paid_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  deletedAt       DateTime? @map("deleted_at")
+
+  items    OrderItem[]
+  payments Payment[]
+  invoices Invoice[]
+
+  @@index([customerId])
+  @@index([status])
+  @@index([ownerId])
+  @@map("orders")
+}
+
+model OrderItem {
+  id        BigInt   @id @default(autoincrement())
+  orderId   BigInt   @map("order_id")
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  skuId     BigInt   @map("sku_id")
+  sku       Sku      @relation(fields: [skuId], references: [id])
+  quantity  Int      @default(1)
+  unitPrice Decimal  @map("unit_price") @db.Decimal(12, 2)
+  total     Decimal  @db.Decimal(12, 2)
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+enum SubscriptionStatus {
+  active
+  paused
+  cancelled
+  past_due
+}
+
+model Subscription {
+  id                BigInt             @id @default(autoincrement())
+  uuid              String             @unique @default(uuid()) @db.Uuid
+  customerId        BigInt             @map("customer_id")
+  customer          Customer           @relation(fields: [customerId], references: [id])
+  status            SubscriptionStatus @default(active)
+  planPrice         Decimal            @map("plan_price") @db.Decimal(12, 2)
+  interval          String             @default("month") // month / year
+  gatewayProfileToken String?          @map("gateway_profile_token") // 银行返回的永久 token，仅存 token
+  currentPeriodEnd  DateTime?          @map("current_period_end")
+  nextBillingAt     DateTime?          @map("next_billing_at")
+  pausedUntil       DateTime?          @map("paused_until")
+  cancelledAt       DateTime?          @map("cancelled_at")
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+
+  orders Order[]
+
+  @@index([customerId])
+  @@index([status])
+  @@map("subscriptions")
+}
+
+model Payment {
+  id             BigInt   @id @default(autoincrement())
+  uuid           String   @unique @default(uuid()) @db.Uuid
+  orderId        BigInt?  @map("order_id")
+  order          Order?   @relation(fields: [orderId], references: [id])
+  amount         Decimal  @db.Decimal(12, 2)
+  currency       String   @default("USD")
+  status         String // pending / succeeded / failed / refunded
+  gatewayTxnId   String?  @map("gateway_txn_id") // 银行交易号，绝不存卡号
+  idempotencyKey String?  @unique @map("idempotency_key")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  refunds Refund[]
+
+  @@index([orderId])
+  @@index([status])
+  @@map("payments")
+}
+
+model Refund {
+  id           BigInt   @id @default(autoincrement())
+  uuid         String   @unique @default(uuid()) @db.Uuid
+  paymentId    BigInt   @map("payment_id")
+  payment      Payment  @relation(fields: [paymentId], references: [id])
+  amount       Decimal  @db.Decimal(12, 2)
+  status       String   @default("requested") // requested / approved / processed / rejected
+  reason       String?
+  approvedById BigInt?  @map("approved_by_id")
+  gatewayTxnId String?  @map("gateway_txn_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@index([paymentId])
+  @@index([status])
+  @@map("refunds")
+}
+
+model Invoice {
+  id        BigInt   @id @default(autoincrement())
+  number    String   @unique // INV-2026-0001
+  orderId   BigInt?  @map("order_id")
+  order     Order?   @relation(fields: [orderId], references: [id])
+  status    String   @default("draft") // draft / sent / paid / overdue
+  total     Decimal  @db.Decimal(12, 2)
+  pdfUrl    String?  @map("pdf_url")
+  issuedAt  DateTime? @map("issued_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([orderId])
+  @@index([status])
+  @@map("invoices")
+}
+
+/// 客户已购设备（序列号 + 保修），关联 customer，可关联订单
+model Device {
+  id           BigInt    @id @default(autoincrement())
+  uuid         String    @unique @default(uuid()) @db.Uuid
+  customerId   BigInt    @map("customer_id")
+  customer     Customer  @relation(fields: [customerId], references: [id])
+  model        String
+  serialNumber String    @unique @map("serial_number")
+  installedAt  DateTime? @map("installed_at")
+  warrantyEnd  DateTime? @map("warranty_end")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  workOrders WorkOrder[]
+
+  @@index([customerId])
+  @@map("devices")
+}
+
+// ============================================================
+// M4 客服系统
+// ============================================================
+
+model SupportTicket {
+  id          BigInt    @id @default(autoincrement())
+  uuid        String    @unique @default(uuid()) @db.Uuid
+  number      String    @unique // TKT-2026-0001
+  customerId  BigInt?   @map("customer_id")
+  customer    Customer? @relation(fields: [customerId], references: [id])
+  subject     String
+  channel     String    @default("email") // email / web_form / live_chat
+  status      String    @default("open") // open / pending / resolved / closed
+  priority    String    @default("normal") // low / normal / high / urgent
+  assignedToId BigInt?  @map("assigned_to_id")
+  slaDueAt    DateTime? @map("sla_due_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  messages Message[]
+
+  @@index([customerId])
+  @@index([status])
+  @@index([assignedToId])
+  @@map("support_tickets")
+}
+
+model Message {
+  id        BigInt   @id @default(autoincrement())
+  ticketId  BigInt   @map("ticket_id")
+  ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  direction String // inbound / outbound / internal_note
+  channel   String?
+  body      String
+  authorId  BigInt?  @map("author_id") // user.id 或 null(客户)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([ticketId])
+  @@map("messages")
+}
+
+// ============================================================
+// M5 工单系统（现场服务）
+// ============================================================
+
+model Technician {
+  id        BigInt   @id @default(autoincrement())
+  userId    BigInt   @unique @map("user_id")
+  user      User     @relation(fields: [userId], references: [id])
+  skills    Json? // string[]
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  workOrders  WorkOrder[]
+  timeEntries TimeEntry[]
+
+  @@map("technicians")
+}
+
+enum WorkOrderType {
+  assessment
+  install
+  maintenance
+  repair
+  winterization
+}
+
+enum WorkOrderStatus {
+  scheduled
+  in_progress
+  completed
+  cancelled
+}
+
+model WorkOrder {
+  id                BigInt          @id @default(autoincrement())
+  uuid              String          @unique @default(uuid()) @db.Uuid
+  number            String          @unique // WO-2026-0001
+  type              WorkOrderType
+  status            WorkOrderStatus @default(scheduled)
+  customerId        BigInt          @map("customer_id")
+  customer          Customer        @relation(fields: [customerId], references: [id])
+  propertyId        BigInt?         @map("property_id")
+  property          Property?       @relation(fields: [propertyId], references: [id])
+  deviceId          BigInt?         @map("device_id")
+  device            Device?         @relation(fields: [deviceId], references: [id])
+  appointmentId     BigInt?         @unique @map("appointment_id")
+  appointment       Appointment?    @relation(fields: [appointmentId], references: [id])
+  technicianId      BigInt?         @map("technician_id")
+  technician        Technician?     @relation(fields: [technicianId], references: [id])
+  scheduledAt       DateTime?       @map("scheduled_at")
+  startedAt         DateTime?       @map("started_at")
+  completedAt       DateTime?       @map("completed_at")
+  notes             String?
+  serviceRecord     Json?           @map("service_record") // 现场表单数据
+  photos            Json? // URL[]
+  customerSignature String?         @map("customer_signature") // base64
+  partsUsed         Json?           @map("parts_used")
+  totalCost         Decimal?        @map("total_cost") @db.Decimal(12, 2)
+  reportPdfUrl      String?         @map("report_pdf_url")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+
+  timeEntries TimeEntry[]
+
+  @@index([customerId])
+  @@index([propertyId])
+  @@index([technicianId])
+  @@index([status])
+  @@index([scheduledAt])
+  @@map("work_orders")
+}
+
+model TimeEntry {
+  id           BigInt    @id @default(autoincrement())
+  workOrderId  BigInt    @map("work_order_id")
+  workOrder    WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  technicianId BigInt    @map("technician_id")
+  technician   Technician @relation(fields: [technicianId], references: [id])
+  arrivedAt    DateTime? @map("arrived_at")
+  startedAt    DateTime? @map("started_at")
+  completedAt  DateTime? @map("completed_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@index([workOrderId])
+  @@index([technicianId])
+  @@map("time_entries")
+}
+
+// ============================================================
+// M6 预约系统
+// ============================================================
+
+enum AppointmentType {
+  standard
+  demo_day
+  same_day
+  install
+  repair
+}
+
+model Appointment {
+  id            BigInt          @id @default(autoincrement())
+  uuid          String          @unique @default(uuid()) @db.Uuid
+  number        String          @unique // APT-2026-0001
+  type          AppointmentType
+  status        String          @default("requested") // requested / confirmed / cancelled / completed
+  customerId    BigInt?         @map("customer_id")
+  customer      Customer?       @relation(fields: [customerId], references: [id])
+  contactName   String?         @map("contact_name")
+  contactEmail  String?         @map("contact_email")
+  contactPhone  String?         @map("contact_phone")
+  address       Json?
+  preferredDate DateTime?       @map("preferred_date")
+  preferredTown String?         @map("preferred_town")
+  notes         String?
+  confirmedAt   DateTime?       @map("confirmed_at")
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+
+  workOrder WorkOrder?
+
+  @@index([customerId])
+  @@index([status])
+  @@index([type])
+  @@map("appointments")
+}
+
+model TimeSlot {
+  id           BigInt   @id @default(autoincrement())
+  serviceType  String   @map("service_type")
+  technicianId BigInt?  @map("technician_id")
+  region       String?
+  startsAt     DateTime @map("starts_at")
+  endsAt       DateTime @map("ends_at")
+  capacity     Int      @default(1)
+  isBlocked    Boolean  @default(false) @map("is_blocked")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([serviceType])
+  @@index([startsAt])
+  @@map("time_slots")
+}
+
+// ============================================================
+// M7 营销与活动
+// ============================================================
+
+model DiscountCode {
+  id          BigInt    @id @default(autoincrement())
+  code        String    @unique
+  type        String    @default("percent") // percent / fixed
+  value       Decimal   @db.Decimal(12, 2)
+  minAmount   Decimal?  @map("min_amount") @db.Decimal(12, 2)
+  maxUses     Int?      @map("max_uses")
+  usedCount   Int       @default(0) @map("used_count")
+  membersOnly Boolean   @default(false) @map("members_only")
+  startsAt    DateTime? @map("starts_at")
+  expiresAt   DateTime? @map("expires_at")
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@index([isActive])
+  @@map("discount_codes")
+}
+
+model Referral {
+  id             BigInt   @id @default(autoincrement())
+  referrerCustomerId BigInt @map("referrer_customer_id")
+  referredCustomerId BigInt? @map("referred_customer_id")
+  code           String   @unique
+  status         String   @default("pending") // pending / qualified / rewarded
+  rewardAmount   Decimal? @map("reward_amount") @db.Decimal(12, 2)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@index([referrerCustomerId])
+  @@map("referrals")
+}
+
+model EmailCampaign {
+  id          BigInt    @id @default(autoincrement())
+  name        String
+  subject     String
+  templateId  String?   @map("template_id")
+  segment     Json? // 标签筛选条件
+  status      String    @default("draft") // draft / scheduled / sent
+  scheduledAt DateTime? @map("scheduled_at")
+  sentAt      DateTime? @map("sent_at")
+  stats       Json? // { opened, clicked }
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@map("email_campaigns")
+}
+
+// ============================================================
+// M9 系统配置
+// ============================================================
+
+/// 全局配置键值对（品牌、税费、运费、支付、邮件模板等）。
+/// 敏感值（API Key/Secret）加密后存于 value，isEncrypted 标记。
+model Setting {
+  id          BigInt   @id @default(autoincrement())
+  key         String   @unique // "brand.logo_url" / "tax.ma_rate" ...
+  value       Json
+  isEncrypted Boolean  @default(false) @map("is_encrypted")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("settings")
+}

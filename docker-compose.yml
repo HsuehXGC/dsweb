@@ -1,0 +1,34 @@
+# 本地开发依赖服务（待安装 Docker 后：docker compose up -d）
+# 若本机无 Docker，可改用托管 Postgres(Neon/Supabase) + Redis(Upstash)，
+# 把连接串填入 .env 即可，无需此文件。
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: dsweb-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: dsweb
+      POSTGRES_PASSWORD: dsweb
+      POSTGRES_DB: dsweb
+    ports:
+      - "5432:5432"
+    volumes:
+      - dsweb_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dsweb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: dsweb-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - dsweb_redisdata:/data
+
+volumes:
+  dsweb_pgdata:
+  dsweb_redisdata:
