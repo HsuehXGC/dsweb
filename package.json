@@ -17,7 +17,8 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "db:generate": "pnpm --filter @dsweb/api prisma generate",
     "db:migrate": "pnpm --filter @dsweb/api prisma migrate dev",
-    "db:seed": "pnpm --filter @dsweb/api db:seed"
+    "db:seed": "pnpm --filter @dsweb/api db:seed",
+    "db:seed:demo": "pnpm --filter @dsweb/api exec ts-node prisma/seed-demo.ts"
   },
   "devDependencies": {
     "prettier": "^3.3.3",
