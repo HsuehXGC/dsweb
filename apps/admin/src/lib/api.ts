@@ -66,6 +66,26 @@ export const api = {
       body: JSON.stringify({ content }),
     });
   },
+  getSettings() {
+    return request<{
+      groups: Record<string, string>;
+      settings: Array<{
+        key: string;
+        group: string;
+        label: string;
+        type: string;
+        value?: unknown;
+        isSet?: boolean;
+        isSecret: boolean;
+      }>;
+    }>('/admin/settings');
+  },
+  updateSettings(settings: Array<{ key: string; value: unknown }>) {
+    return request<{ updated: number }>('/admin/settings', {
+      method: 'PUT',
+      body: JSON.stringify({ settings }),
+    });
+  },
 };
 
 export { ApiError };

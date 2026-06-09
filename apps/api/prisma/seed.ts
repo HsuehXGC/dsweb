@@ -6,6 +6,7 @@
 import { Prisma, PrismaClient, PublishStatus } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { HOMEPAGE_SECTIONS } from './homepage-content';
+import { SETTINGS_CATALOG } from '../src/settings/settings.catalog';
 
 const prisma = new PrismaClient();
 
@@ -175,8 +176,25 @@ async function main() {
   console.log(`  Super Admin: ${email} / ${password}  (请尽快修改密码)`);
 
   await seedHomepage();
+  await seedSettings();
 
   console.log('✅ Seed complete.');
+}
+
+/** 预置系统配置默认值（仅非敏感项；敏感项留空待管理员填写）。幂等。 */
+async function seedSettings() {
+  console.log('▶ Seeding settings (M9)...');
+  let n = 0;
+  for (const def of SETTINGS_CATALOG) {
+    if (def.type === 'secret') continue; // 敏感项不预置
+    await prisma.setting.upsert({
+      where: { key: def.key },
+      update: {},
+      create: { key: def.key, value: def.default as Prisma.InputJsonValue, isEncrypted: false },
+    });
+    n++;
+  }
+  console.log(`  ${n} settings ensured.`);
 }
 
 /** 预置主页（slug=home）+ 9 个 section + 双语内容 block。幂等：重置后重建。 */

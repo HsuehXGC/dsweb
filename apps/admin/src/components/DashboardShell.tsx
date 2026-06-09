@@ -8,6 +8,7 @@ import {
   FileTextOutlined,
   TeamOutlined,
   SafetyOutlined,
+  SettingOutlined,
   LogoutOutlined,
 } from '@ant-design/icons';
 import { session } from '@/lib/session';
@@ -19,6 +20,7 @@ const MENU = [
   { key: '/cms', icon: <FileTextOutlined />, label: 'CMS 内容' },
   { key: '/users', icon: <TeamOutlined />, label: '账号管理' },
   { key: '/roles', icon: <SafetyOutlined />, label: '角色权限' },
+  { key: '/settings', icon: <SettingOutlined />, label: '系统配置' },
 ];
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
