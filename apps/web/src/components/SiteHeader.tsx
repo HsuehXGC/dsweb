@@ -37,6 +37,9 @@ export function SiteHeader() {
           >
             {locale === 'en' ? '中文' : 'EN'}
           </button>
+          <Link href="/account" className="text-gray-700 hover:text-brand" aria-label="account">
+            👤
+          </Link>
           <Link href="/checkout" className="relative text-gray-700 hover:text-brand" aria-label="cart">
             🛒
             {cartCount > 0 && (
