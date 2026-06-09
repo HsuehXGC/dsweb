@@ -11,6 +11,7 @@ import { CmsModule } from './cms/cms.module';
 import { SettingsModule } from './settings/settings.module';
 import { MailModule } from './mail/mail.module';
 import { AppointmentsModule } from './appointments/appointments.module';
+import { CrmModule } from './crm/crm.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { PermissionsGuard } from './rbac/permissions.guard';
 
@@ -30,6 +31,7 @@ import { PermissionsGuard } from './rbac/permissions.guard';
     CmsModule,
     SettingsModule,
     AppointmentsModule,
+    CrmModule,
   ],
   providers: [
     // 全局守卫：先 JWT 鉴权（注入 request.user），再 RBAC 权限校验。

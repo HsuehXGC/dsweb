@@ -9,6 +9,9 @@ import {
   TeamOutlined,
   SafetyOutlined,
   SettingOutlined,
+  ContactsOutlined,
+  FunnelPlotOutlined,
+  UserOutlined,
   LogoutOutlined,
 } from '@ant-design/icons';
 import { session } from '@/lib/session';
@@ -17,6 +20,16 @@ const { Header, Sider, Content } = Layout;
 
 const MENU = [
   { key: '/', icon: <DashboardOutlined />, label: '仪表板' },
+  {
+    key: 'crm',
+    icon: <ContactsOutlined />,
+    label: 'CRM 客户',
+    children: [
+      { key: '/crm/leads', icon: <FunnelPlotOutlined />, label: '线索池' },
+      { key: '/crm/customers', icon: <UserOutlined />, label: '客户' },
+      { key: '/crm/pipeline', icon: <FunnelPlotOutlined />, label: '销售流水线' },
+    ],
+  },
   { key: '/cms', icon: <FileTextOutlined />, label: 'CMS 内容' },
   { key: '/users', icon: <TeamOutlined />, label: '账号管理' },
   { key: '/roles', icon: <SafetyOutlined />, label: '角色权限' },
@@ -69,8 +82,11 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         <Menu
           mode="inline"
           selectedKeys={[pathname]}
+          defaultOpenKeys={['crm']}
           items={MENU}
-          onClick={({ key }) => router.push(key)}
+          onClick={({ key }) => {
+            if (key.startsWith('/')) router.push(key);
+          }}
         />
       </Sider>
       <Layout>

@@ -86,6 +86,72 @@ export const api = {
       body: JSON.stringify({ settings }),
     });
   },
+
+  // ---- CRM ----
+  // 注：分页接口返回 { data, meta }，而 request() 会自动解包 .data，故此处直接拿到数组。
+  listLeads(params: Record<string, string> = {}) {
+    const qs = new URLSearchParams(params).toString();
+    return request<
+      Array<{
+        id: string;
+        firstName: string | null;
+        lastName: string | null;
+        email: string;
+        phone: string | null;
+        source: string | null;
+        status: string;
+        convertedCustomerId: string | null;
+        createdAt: string;
+      }>
+    >(`/admin/crm/leads${qs ? `?${qs}` : ''}`);
+  },
+  updateLead(id: string, body: Record<string, unknown>) {
+    return request(`/admin/crm/leads/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
+  },
+  convertLead(id: string) {
+    return request<{ customer_uuid: string; customer_id: string }>(
+      `/admin/crm/leads/${id}/convert`,
+      { method: 'POST' },
+    );
+  },
+  listCustomers(params: Record<string, string> = {}) {
+    const qs = new URLSearchParams(params).toString();
+    return request<
+      Array<{
+        id: string;
+        firstName: string | null;
+        lastName: string | null;
+        email: string;
+        phone: string | null;
+        source: string | null;
+        vipLevel: number;
+        createdAt: string;
+      }>
+    >(`/admin/crm/customers${qs ? `?${qs}` : ''}`);
+  },
+  getCustomer(id: string) {
+    return request<Record<string, unknown>>(`/admin/crm/customers/${id}`);
+  },
+  getBoard() {
+    return request<
+      Array<{
+        stage: string;
+        deals: Array<{
+          id: string;
+          title: string;
+          amount: string | null;
+          stage: string;
+          customer: { firstName: string | null; lastName: string | null; email: string } | null;
+        }>;
+      }>
+    >('/admin/crm/deals/board');
+  },
+  updateDeal(id: string, body: Record<string, unknown>) {
+    return request(`/admin/crm/deals/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
+  },
+  createActivity(body: Record<string, unknown>) {
+    return request('/admin/crm/activities', { method: 'POST', body: JSON.stringify(body) });
+  },
 };
 
 export { ApiError };
