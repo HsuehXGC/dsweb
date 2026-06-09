@@ -18,6 +18,7 @@ import {
   SyncOutlined,
   CalendarOutlined,
   ToolOutlined,
+  CustomerServiceOutlined,
   LogoutOutlined,
 } from '@ant-design/icons';
 import { session } from '@/lib/session';
@@ -56,6 +57,7 @@ const MENU = [
       { key: '/service/dispatch', icon: <ToolOutlined />, label: '调度看板' },
     ],
   },
+  { key: '/support', icon: <CustomerServiceOutlined />, label: '客服收件箱' },
   { key: '/cms', icon: <FileTextOutlined />, label: 'CMS 内容' },
   { key: '/users', icon: <TeamOutlined />, label: '账号管理' },
   { key: '/roles', icon: <SafetyOutlined />, label: '角色权限' },

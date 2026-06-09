@@ -221,6 +221,24 @@ export const api = {
       body: JSON.stringify(body),
     });
   },
+
+  // ---- 客服 (M4) ----
+  listTickets(params: Record<string, string> = {}) {
+    const qs = new URLSearchParams(params).toString();
+    return request<any[]>(`/admin/support/tickets${qs ? `?${qs}` : ''}`);
+  },
+  getTicket(id: string) {
+    return request<any>(`/admin/support/tickets/${id}`);
+  },
+  replyTicket(id: string, body: string, internal = false) {
+    return request(`/admin/support/tickets/${id}/reply`, {
+      method: 'POST',
+      body: JSON.stringify({ body, internal }),
+    });
+  },
+  updateTicket(id: string, body: Record<string, unknown>) {
+    return request(`/admin/support/tickets/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
+  },
 };
 
 export { ApiError };
