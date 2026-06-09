@@ -9,6 +9,8 @@ import { UsersModule } from './users/users.module';
 import { RolesModule } from './roles/roles.module';
 import { CmsModule } from './cms/cms.module';
 import { SettingsModule } from './settings/settings.module';
+import { MailModule } from './mail/mail.module';
+import { AppointmentsModule } from './appointments/appointments.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { PermissionsGuard } from './rbac/permissions.guard';
 
@@ -19,6 +21,7 @@ import { PermissionsGuard } from './rbac/permissions.guard';
       envFilePath: ['../../.env', '.env'],
     }),
     PrismaModule,
+    MailModule,
     AuditModule,
     AuthModule,
     HealthModule,
@@ -26,6 +29,7 @@ import { PermissionsGuard } from './rbac/permissions.guard';
     RolesModule,
     CmsModule,
     SettingsModule,
+    AppointmentsModule,
   ],
   providers: [
     // 全局守卫：先 JWT 鉴权（注入 request.user），再 RBAC 权限校验。
