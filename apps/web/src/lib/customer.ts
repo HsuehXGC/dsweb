@@ -66,6 +66,9 @@ export const customerApi = {
   devices() {
     return req<any[]>('/customer/devices', {}, true);
   },
+  workOrders() {
+    return req<any[]>('/customer/work-orders', {}, true);
+  },
   subscribe(productSlug: string, paymentToken: string) {
     return req('/customer/subscriptions/subscribe', {
       method: 'POST',

@@ -73,20 +73,23 @@ function AuthForms() {
 
 function Dashboard({ user }: { user: CustomerUser }) {
   const t = useTranslations('account');
-  const [tab, setTab] = useState<'orders' | 'subscriptions' | 'devices'>('orders');
+  const [tab, setTab] = useState<'orders' | 'subscriptions' | 'services' | 'devices'>('orders');
   const [orders, setOrders] = useState<any[]>([]);
   const [subs, setSubs] = useState<any[]>([]);
   const [devices, setDevices] = useState<any[]>([]);
+  const [services, setServices] = useState<any[]>([]);
 
   const reload = useCallback(async () => {
-    const [o, s, d] = await Promise.all([
+    const [o, s, d, w] = await Promise.all([
       customerApi.orders().catch(() => []),
       customerApi.subscriptions().catch(() => []),
       customerApi.devices().catch(() => []),
+      customerApi.workOrders().catch(() => []),
     ]);
     setOrders(o);
     setSubs(s);
     setDevices(d);
+    setServices(w);
   }, []);
 
   useEffect(() => {
@@ -119,13 +122,21 @@ function Dashboard({ user }: { user: CustomerUser }) {
       </div>
 
       <div className="mt-6 flex gap-2 border-b border-gray-200">
-        {(['orders', 'subscriptions', 'devices'] as const).map((k) => (
+        {(['orders', 'subscriptions', 'services', 'devices'] as const).map((k) => (
           <button
             key={k}
             onClick={() => setTab(k)}
             className={`px-4 py-2 text-sm font-medium ${tab === k ? 'border-b-2 border-brand text-brand' : 'text-gray-500'}`}
           >
-            {t(k === 'orders' ? 'tabOrders' : k === 'subscriptions' ? 'tabSubscriptions' : 'tabDevices')}
+            {t(
+              k === 'orders'
+                ? 'tabOrders'
+                : k === 'subscriptions'
+                  ? 'tabSubscriptions'
+                  : k === 'services'
+                    ? 'tabServices'
+                    : 'tabDevices',
+            )}
           </button>
         ))}
       </div>
@@ -181,6 +192,25 @@ function Dashboard({ user }: { user: CustomerUser }) {
                 {t('subscribe')}
               </button>
             </div>
+          )
+        )}
+
+        {tab === 'services' && (
+          services.length === 0 ? <Empty text={t('noServices')} /> : (
+            <ul className="space-y-3">
+              {services.map((w) => (
+                <li key={w.uuid} className="flex items-center justify-between rounded-lg bg-white p-4 shadow-sm">
+                  <div>
+                    <span className="font-medium">{w.number}</span>
+                    <span className="ml-3 text-sm text-gray-500">{w.type}</span>
+                    <span className="ml-2 rounded bg-brand-light px-2 py-0.5 text-xs text-brand">{w.status}</span>
+                  </div>
+                  {w.status === 'completed' && w.reportPdfUrl && (
+                    <span className="text-sm text-brand-mid">{t('report')}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
           )
         )}
 

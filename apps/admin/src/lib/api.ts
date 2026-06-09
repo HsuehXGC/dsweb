@@ -176,6 +176,51 @@ export const api = {
   runBilling() {
     return request<{ processed: number }>('/admin/billing/run-due', { method: 'POST', body: '{}' });
   },
+
+  // ---- 服务交付 (M6 预约 / M5 工单) ----
+  listAppointments(params: Record<string, string> = {}) {
+    const qs = new URLSearchParams(params).toString();
+    return request<any[]>(`/admin/appointments${qs ? `?${qs}` : ''}`);
+  },
+  confirmAppointment(id: string) {
+    return request<{ appointment_number: string; work_order_number: string }>(
+      `/admin/appointments/${id}/confirm`,
+      { method: 'POST', body: '{}' },
+    );
+  },
+  dispatchBoard(date?: string) {
+    const qs = date ? `?date=${date}` : '';
+    return request<
+      Array<{ technicianId: string; name: string; orders: any[] }>
+    >(`/admin/work-orders/board${qs}`);
+  },
+  listWorkOrders(params: Record<string, string> = {}) {
+    const qs = new URLSearchParams(params).toString();
+    return request<any[]>(`/admin/work-orders${qs ? `?${qs}` : ''}`);
+  },
+  listTechnicians() {
+    return request<any[]>('/admin/work-orders/technicians');
+  },
+  assignWorkOrder(id: string, technicianId: string | null) {
+    return request(`/admin/work-orders/${id}/assign`, {
+      method: 'PATCH',
+      body: JSON.stringify({ technician_id: technicianId }),
+    });
+  },
+
+  // ---- 技师移动端 ----
+  techToday() {
+    return request<any[]>('/tech/today');
+  },
+  techClock(id: string, event: 'arrived' | 'started' | 'completed') {
+    return request(`/tech/work-orders/${id}/clock/${event}`, { method: 'POST', body: '{}' });
+  },
+  techComplete(id: string, body: Record<string, unknown>) {
+    return request(`/tech/work-orders/${id}/complete`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
 };
 
 export { ApiError };
