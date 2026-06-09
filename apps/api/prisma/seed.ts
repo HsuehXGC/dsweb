@@ -177,8 +177,117 @@ async function main() {
 
   await seedHomepage();
   await seedSettings();
+  await seedErp();
 
   console.log('✅ Seed complete.');
+}
+
+/** 预置 ERP 样例数据：主仓 + 产品/SKU + 库存。幂等。 */
+async function seedErp() {
+  console.log('▶ Seeding ERP (products/inventory)...');
+  const main = await prisma.warehouse.upsert({
+    where: { code: 'WH-MAIN' },
+    update: {},
+    create: { code: 'WH-MAIN', name: '主仓库', type: 'main' },
+  });
+  await prisma.warehouse.upsert({
+    where: { code: 'WH-VEHICLE-1' },
+    update: {},
+    create: { code: 'WH-VEHICLE-1', name: '1号车上库存', type: 'vehicle' },
+  });
+
+  const products: Array<{
+    slug: string;
+    name: string;
+    type: 'one_time' | 'subscription';
+    basePrice: number;
+    description: { en: string; zh: string };
+    sku: string;
+    stock: number;
+  }> = [
+    {
+      slug: 'robotic-mower-x1',
+      name: 'SmartLawn Robotic Mower X1',
+      type: 'one_time',
+      basePrice: 2999,
+      description: {
+        en: 'RTK-guided robotic mower for yards up to 1.5 acres. Handles slopes and tight edges.',
+        zh: 'RTK 导航割草机器人，适用 1.5 英亩以内庭院，可应对坡地与狭窄边缘。',
+      },
+      sku: 'SM-X1',
+      stock: 25,
+    },
+    {
+      slug: 'robotic-mower-x2-pro',
+      name: 'SmartLawn Robotic Mower X2 Pro',
+      type: 'one_time',
+      basePrice: 4499,
+      description: {
+        en: 'Pro model for large properties up to 5 acres, with multi-zone mapping.',
+        zh: '专业型，适用 5 英亩以内大型地块，支持多区域地图。',
+      },
+      sku: 'SM-X2',
+      stock: 12,
+    },
+    {
+      slug: 'rtk-base-station',
+      name: 'RTK Base Station',
+      type: 'one_time',
+      basePrice: 499,
+      description: { en: 'Precision RTK base station for centimeter-level navigation.', zh: '厘米级导航 RTK 基站。' },
+      sku: 'ACC-RTK',
+      stock: 40,
+    },
+    {
+      slug: 'blade-replacement-set',
+      name: 'Blade Replacement Set (9-pack)',
+      type: 'one_time',
+      basePrice: 59,
+      description: { en: 'Genuine replacement blades, 9-pack.', zh: '原厂替换刀片，9 片装。' },
+      sku: 'ACC-BLADE',
+      stock: 200,
+    },
+    {
+      slug: 'smartlawn-membership',
+      name: 'SmartLawn Membership',
+      type: 'subscription',
+      basePrice: 80,
+      description: {
+        en: 'Monthly membership: priority service, diagnostics, seasonal maintenance, winterization.',
+        zh: '月度会员：优先服务、远程诊断、季节维护、冬季封存。',
+      },
+      sku: 'MEM-MONTHLY',
+      stock: 0,
+    },
+  ];
+
+  for (const p of products) {
+    const product = await prisma.product.upsert({
+      where: { slug: p.slug },
+      update: { name: p.name, basePrice: new Prisma.Decimal(p.basePrice), isActive: true },
+      create: {
+        slug: p.slug,
+        name: p.name,
+        type: p.type,
+        basePrice: new Prisma.Decimal(p.basePrice),
+        description: p.description as Prisma.InputJsonValue,
+        isActive: true,
+      },
+    });
+    const sku = await prisma.sku.upsert({
+      where: { code: p.sku },
+      update: { price: new Prisma.Decimal(p.basePrice) },
+      create: { productId: product.id, code: p.sku, price: new Prisma.Decimal(p.basePrice) },
+    });
+    if (p.type === 'one_time') {
+      await prisma.inventory.upsert({
+        where: { skuId_warehouseId: { skuId: sku.id, warehouseId: main.id } },
+        update: { available: p.stock },
+        create: { skuId: sku.id, warehouseId: main.id, available: p.stock, lowWatermark: 5 },
+      });
+    }
+  }
+  console.log(`  ${products.length} products + inventory seeded.`);
 }
 
 /** 预置系统配置默认值（仅非敏感项；敏感项留空待管理员填写）。幂等。 */

@@ -12,6 +12,9 @@ import { SettingsModule } from './settings/settings.module';
 import { MailModule } from './mail/mail.module';
 import { AppointmentsModule } from './appointments/appointments.module';
 import { CrmModule } from './crm/crm.module';
+import { ProductsModule } from './products/products.module';
+import { InventoryModule } from './inventory/inventory.module';
+import { OrdersModule } from './orders/orders.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { PermissionsGuard } from './rbac/permissions.guard';
 
@@ -32,6 +35,9 @@ import { PermissionsGuard } from './rbac/permissions.guard';
     SettingsModule,
     AppointmentsModule,
     CrmModule,
+    ProductsModule,
+    InventoryModule,
+    OrdersModule,
   ],
   providers: [
     // 全局守卫：先 JWT 鉴权（注入 request.user），再 RBAC 权限校验。
