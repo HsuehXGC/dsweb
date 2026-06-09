@@ -1,10 +1,20 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { AppointmentType, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
 import { ConfigService } from '@nestjs/config';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
+import { WorkOrdersService } from '../work-orders/work-orders.service';
+
+/** 预约类型 → 工单类型映射 */
+const APPT_TO_WO: Record<string, string> = {
+  standard: 'assessment',
+  demo_day: 'assessment',
+  same_day: 'assessment',
+  install: 'install',
+  repair: 'repair',
+};
 
 const NEXT_STEPS: Record<string, { en: string; zh: string }> = {
   standard: {
@@ -27,7 +37,106 @@ export class AppointmentsService {
     private readonly prisma: PrismaService,
     private readonly mail: MailService,
     private readonly config: ConfigService,
+    private readonly workOrders: WorkOrdersService,
   ) {}
+
+  /** 审批确认预约：找/建客户与地块 → 生成工单 → 发确认邮件。对应 M6「预约转工单」。 */
+  async confirm(id: bigint) {
+    const appt = await this.prisma.appointment.findUnique({ where: { id } });
+    if (!appt) throw new NotFoundException('Appointment not found');
+    if (appt.status === 'confirmed') {
+      throw new NotFoundException('Appointment already confirmed');
+    }
+
+    // 找/建客户
+    let customerId = appt.customerId;
+    if (!customerId && appt.contactEmail) {
+      const existing = await this.prisma.customer.findUnique({ where: { email: appt.contactEmail } });
+      const [firstName, ...rest] = (appt.contactName ?? '').split(' ');
+      const customer =
+        existing ??
+        (await this.prisma.customer.create({
+          data: {
+            email: appt.contactEmail,
+            firstName: firstName || null,
+            lastName: rest.join(' ') || null,
+            phone: appt.contactPhone,
+            source: `appointment_${appt.type}`,
+          },
+        }));
+      customerId = customer.id;
+    }
+    if (!customerId) throw new NotFoundException('Appointment has no contact to create a customer');
+
+    // 建地块（若有地址）
+    const addr = (appt.address ?? {}) as Record<string, unknown>;
+    let propertyId: bigint | undefined;
+    if (addr.street || addr.city) {
+      const property = await this.prisma.property.create({
+        data: {
+          customerId,
+          street: addr.street as string,
+          city: addr.city as string,
+          state: addr.state as string,
+          zip: addr.zip as string,
+          acres: addr.property_acres ? new Prisma.Decimal(addr.property_acres as number) : undefined,
+          slope: addr.slope as string,
+          wifiStatus: addr.wifi_status as string,
+        },
+      });
+      propertyId = property.id;
+    }
+
+    const wo = await this.workOrders.create({
+      type: APPT_TO_WO[appt.type] ?? 'assessment',
+      customerId,
+      propertyId,
+      appointmentId: appt.id,
+      scheduledAt: appt.preferredDate ?? undefined,
+      notes: appt.notes ?? undefined,
+    });
+
+    await this.prisma.appointment.update({
+      where: { id },
+      data: { status: 'confirmed', confirmedAt: new Date(), customerId },
+    });
+
+    if (appt.contactEmail) {
+      await this.mail.send({
+        to: appt.contactEmail,
+        subject: `DS SmartLawn · Appointment confirmed (${appt.number})`,
+        text: `Your appointment ${appt.number} is confirmed. Work order ${wo.number} has been scheduled.`,
+      });
+    }
+    return { appointment_number: appt.number, work_order_number: wo.number };
+  }
+
+  // ---------- 时段配置 ----------
+
+  listTimeSlots(serviceType?: string) {
+    return this.prisma.timeSlot.findMany({
+      where: serviceType ? { serviceType } : {},
+      orderBy: { startsAt: 'asc' },
+    });
+  }
+
+  createTimeSlot(data: {
+    serviceType: string;
+    startsAt: Date;
+    endsAt: Date;
+    capacity?: number;
+    region?: string;
+  }) {
+    return this.prisma.timeSlot.create({
+      data: {
+        serviceType: data.serviceType,
+        startsAt: data.startsAt,
+        endsAt: data.endsAt,
+        capacity: data.capacity ?? 1,
+        region: data.region,
+      },
+    });
+  }
 
   async create(dto: CreateAppointmentDto) {
     const locale = dto.locale ?? 'en';

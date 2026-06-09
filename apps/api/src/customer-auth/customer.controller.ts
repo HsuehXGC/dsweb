@@ -119,4 +119,29 @@ export class MemberController {
       orderBy: { createdAt: 'desc' },
     });
   }
+
+  @Get('work-orders')
+  workOrders(@CurrentCustomer() c: AuthenticatedCustomer) {
+    return this.prisma.workOrder.findMany({
+      where: { customerId: c.id },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        uuid: true,
+        number: true,
+        type: true,
+        status: true,
+        scheduledAt: true,
+        completedAt: true,
+        reportPdfUrl: true,
+      },
+    });
+  }
+
+  @Get('appointments')
+  appointments(@CurrentCustomer() c: AuthenticatedCustomer) {
+    return this.prisma.appointment.findMany({
+      where: { customerId: c.id },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
 }

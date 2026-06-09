@@ -4,8 +4,10 @@ import {
   AppointmentsAdminController,
   AppointmentsPublicController,
 } from './appointments.controller';
+import { WorkOrdersModule } from '../work-orders/work-orders.module';
 
 @Module({
+  imports: [WorkOrdersModule],
   controllers: [AppointmentsPublicController, AppointmentsAdminController],
   providers: [AppointmentsService],
 })

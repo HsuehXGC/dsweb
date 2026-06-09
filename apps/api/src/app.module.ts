@@ -20,6 +20,7 @@ import { CommerceModule } from './commerce/commerce.module';
 import { CustomerAuthModule } from './customer-auth/customer-auth.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { RefundsModule } from './refunds/refunds.module';
+import { WorkOrdersModule } from './work-orders/work-orders.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { PermissionsGuard } from './rbac/permissions.guard';
 
@@ -48,6 +49,7 @@ import { PermissionsGuard } from './rbac/permissions.guard';
     CustomerAuthModule,
     SubscriptionsModule,
     RefundsModule,
+    WorkOrdersModule,
   ],
   providers: [
     // 全局守卫：先 JWT 鉴权（注入 request.user），再 RBAC 权限校验。
