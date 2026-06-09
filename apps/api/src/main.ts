@@ -8,6 +8,11 @@ import { TransformInterceptor } from './common/transform.interceptor';
 import { HttpExceptionFilter } from './common/http-exception.filter';
 import { PrismaService } from './prisma/prisma.service';
 
+// Prisma 的自增主键为 BigInt，JSON 默认无法序列化 —— 统一转字符串
+(BigInt.prototype as unknown as { toJSON: () => string }).toJSON = function (this: bigint) {
+  return this.toString();
+};
+
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
 
