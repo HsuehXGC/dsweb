@@ -152,6 +152,30 @@ export const api = {
   createActivity(body: Record<string, unknown>) {
     return request('/admin/crm/activities', { method: 'POST', body: JSON.stringify(body) });
   },
+
+  // ---- ERP ----
+  listOrders(params: Record<string, string> = {}) {
+    const qs = new URLSearchParams(params).toString();
+    return request<any[]>(`/admin/orders${qs ? `?${qs}` : ''}`); // 分页接口 → 解包后为数组
+  },
+  getOrder(id: string) {
+    return request<any>(`/admin/orders/${id}`);
+  },
+  updateOrderStatus(id: string, status: string) {
+    return request(`/admin/orders/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) });
+  },
+  listProducts() {
+    return request<any[]>('/admin/products');
+  },
+  listInventory() {
+    return request<any[]>('/admin/inventory');
+  },
+  listSubscriptions() {
+    return request<any[]>('/admin/subscriptions');
+  },
+  runBilling() {
+    return request<{ processed: number }>('/admin/billing/run-due', { method: 'POST', body: '{}' });
+  },
 };
 
 export { ApiError };

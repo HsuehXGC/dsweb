@@ -111,9 +111,10 @@ export class OrdersService {
     });
   }
 
-  /** 标记已支付：状态→paid、记 paidAt、扣减主仓库存。 */
+  /** 标记已支付：状态→paid、记 paidAt、扣减主仓库存、自动开票。 */
   async markPaid(orderId: bigint) {
     const warehouse = await this.inventory.mainWarehouse();
+    const year = new Date().getFullYear();
     return this.prisma.$transaction(async (tx) => {
       const order = await tx.order.findUnique({ where: { id: orderId }, include: { items: true } });
       if (!order) throw new NotFoundException('Order not found');
@@ -124,10 +125,28 @@ export class OrdersService {
           warehouse.id,
         );
       }
-      return tx.order.update({
+      const updated = await tx.order.update({
         where: { id: orderId },
         data: { status: 'paid', paymentStatus: 'paid', paidAt: new Date() },
       });
+      // 自动开票（幂等：该订单尚无发票时才建）
+      const hasInvoice = await tx.invoice.findFirst({ where: { orderId } });
+      if (!hasInvoice) {
+        const inv = await tx.invoice.create({
+          data: {
+            number: `tmp-inv-${orderId}`,
+            orderId,
+            status: 'paid',
+            total: order.total,
+            issuedAt: new Date(),
+          },
+        });
+        await tx.invoice.update({
+          where: { id: inv.id },
+          data: { number: `INV-${year}-${String(inv.id).padStart(5, '0')}` },
+        });
+      }
+      return updated;
     });
   }
 }

@@ -12,6 +12,10 @@ import {
   ContactsOutlined,
   FunnelPlotOutlined,
   UserOutlined,
+  ShoppingOutlined,
+  ShoppingCartOutlined,
+  DatabaseOutlined,
+  SyncOutlined,
   LogoutOutlined,
 } from '@ant-design/icons';
 import { session } from '@/lib/session';
@@ -28,6 +32,17 @@ const MENU = [
       { key: '/crm/leads', icon: <FunnelPlotOutlined />, label: '线索池' },
       { key: '/crm/customers', icon: <UserOutlined />, label: '客户' },
       { key: '/crm/pipeline', icon: <FunnelPlotOutlined />, label: '销售流水线' },
+    ],
+  },
+  {
+    key: 'erp',
+    icon: <ShoppingOutlined />,
+    label: 'ERP',
+    children: [
+      { key: '/erp/orders', icon: <ShoppingCartOutlined />, label: '订单' },
+      { key: '/erp/products', icon: <ShoppingOutlined />, label: '产品' },
+      { key: '/erp/inventory', icon: <DatabaseOutlined />, label: '库存' },
+      { key: '/erp/subscriptions', icon: <SyncOutlined />, label: '订阅' },
     ],
   },
   { key: '/cms', icon: <FileTextOutlined />, label: 'CMS 内容' },
@@ -82,7 +97,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         <Menu
           mode="inline"
           selectedKeys={[pathname]}
-          defaultOpenKeys={['crm']}
+          defaultOpenKeys={['crm', 'erp']}
           items={MENU}
           onClick={({ key }) => {
             if (key.startsWith('/')) router.push(key);
