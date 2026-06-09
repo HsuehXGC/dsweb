@@ -15,6 +15,8 @@ import { CrmModule } from './crm/crm.module';
 import { ProductsModule } from './products/products.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { OrdersModule } from './orders/orders.module';
+import { PaymentModule } from './payment/payment.module';
+import { CommerceModule } from './commerce/commerce.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { PermissionsGuard } from './rbac/permissions.guard';
 
@@ -26,6 +28,7 @@ import { PermissionsGuard } from './rbac/permissions.guard';
     }),
     PrismaModule,
     MailModule,
+    PaymentModule,
     AuditModule,
     AuthModule,
     HealthModule,
@@ -38,6 +41,7 @@ import { PermissionsGuard } from './rbac/permissions.guard';
     ProductsModule,
     InventoryModule,
     OrdersModule,
+    CommerceModule,
   ],
   providers: [
     // 全局守卫：先 JWT 鉴权（注入 request.user），再 RBAC 权限校验。

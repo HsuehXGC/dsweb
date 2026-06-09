@@ -2,12 +2,15 @@
 
 import { useLocale, useTranslations } from 'next-intl';
 import { Link, usePathname, useRouter } from '@/i18n/navigation';
+import { useCart } from '@/lib/cart';
 
 export function SiteHeader() {
   const t = useTranslations('nav');
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
+  const cartItems = useCart();
+  const cartCount = cartItems.reduce((n, i) => n + i.quantity, 0);
 
   const switchLocale = (next: 'en' | 'zh') => {
     router.replace(pathname, { locale: next });
@@ -34,6 +37,14 @@ export function SiteHeader() {
           >
             {locale === 'en' ? '中文' : 'EN'}
           </button>
+          <Link href="/checkout" className="relative text-gray-700 hover:text-brand" aria-label="cart">
+            🛒
+            {cartCount > 0 && (
+              <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[10px] text-white">
+                {cartCount}
+              </span>
+            )}
+          </Link>
           <Link
             href="/book"
             className="rounded-md bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark"
