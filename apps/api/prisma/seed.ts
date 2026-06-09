@@ -3,8 +3,9 @@
  * 预置：全部权限点 + 10 个标准角色 + 角色权限矩阵 + 1 个 Super Admin 账号。
  * 幂等：可重复执行（upsert）。
  */
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient, PublishStatus } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import { HOMEPAGE_SECTIONS } from './homepage-content';
 
 const prisma = new PrismaClient();
 
@@ -173,7 +174,51 @@ async function main() {
   });
   console.log(`  Super Admin: ${email} / ${password}  (请尽快修改密码)`);
 
+  await seedHomepage();
+
   console.log('✅ Seed complete.');
+}
+
+/** 预置主页（slug=home）+ 9 个 section + 双语内容 block。幂等：重置后重建。 */
+async function seedHomepage() {
+  console.log('▶ Seeding homepage (CMS)...');
+  const page = await prisma.page.upsert({
+    where: { slug: 'home' },
+    update: { status: PublishStatus.published, publishedAt: new Date() },
+    create: {
+      slug: 'home',
+      title: 'DS SmartLawn — Home',
+      status: PublishStatus.published,
+      publishedAt: new Date(),
+      seoTitle:
+        'Robotic Lawn Mower Service & Installation in Eastern Massachusetts | DS SmartLawn',
+      seoDesc:
+        'Locally owned robotic lawn care for large yards, hobby farms, and country properties across Eastern MA. Free on-site assessment available.',
+    },
+  });
+
+  // 重置该页 section（连带 block 级联删除），按内容重建
+  await prisma.section.deleteMany({ where: { pageId: page.id } });
+  let sort = 0;
+  for (const s of HOMEPAGE_SECTIONS) {
+    const section = await prisma.section.create({
+      data: {
+        pageId: page.id,
+        type: s.type,
+        sort: sort++,
+        config: (s.config ?? {}) as Prisma.InputJsonValue,
+      },
+    });
+    await prisma.block.create({
+      data: {
+        sectionId: section.id,
+        type: s.type,
+        sort: 0,
+        content: s.content as Prisma.InputJsonValue,
+      },
+    });
+  }
+  console.log(`  Homepage: ${HOMEPAGE_SECTIONS.length} sections seeded.`);
 }
 
 main()

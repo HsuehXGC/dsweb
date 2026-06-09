@@ -5,12 +5,17 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // DS SmartLawn 品牌色（深绿系，对应需求文档视觉风格）
+        // DS SmartLawn 品牌配色 —— 对应《主页前端设计》4.1 配色方案
         brand: {
-          DEFAULT: '#1f6b4a',
-          dark: '#14563b',
-          light: '#e7f2ec',
+          DEFAULT: '#1B4332', // 主色（深绿）
+          dark: '#143524',
+          mid: '#2D6A4F', // 辅色（中绿）
+          light: '#F4F8F5', // 背景浅绿
+          gold: '#C9A227', // 金色（强调）
         },
+      },
+      maxWidth: {
+        container: '1280px',
       },
     },
   },

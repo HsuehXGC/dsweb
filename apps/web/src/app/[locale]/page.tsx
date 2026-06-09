@@ -1,23 +1,30 @@
+import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
 import { getTranslations } from 'next-intl/server';
-import { Link } from '@/i18n/navigation';
+import type { Locale } from '@dsweb/types';
+import { fetchPage } from '@/lib/cms';
+import { SectionRenderer } from '@/components/sections/SectionRenderer';
+
+// 内容来自 CMS，按请求动态渲染，保证后台编辑后刷新即见
+export const dynamic = 'force-dynamic';
 
 /**
- * 主页 —— 对应需求文档 C1，9 个 section。
- * 第一阶段为骨架：Hero 用 i18n 文案，其余 section 占位，
- * 后续接入 M1 CMS（GET /api/v1/public/pages/home）按 schema 渲染。
+ * 主页 —— 对应需求文档 C1。内容由 M1 CMS 提供：
+ * SSR 拉取 GET /api/v1/public/pages/home，按 section.type 渲染。
  */
-const HOME_SECTIONS = [
-  'hero',
-  'value_props',
-  'how_it_works',
-  'products',
-  'membership',
-  'weekly_visit',
-  'testimonials',
-  'service_area',
-  'cta',
-] as const;
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const page = await fetchPage('home');
+  if (page?.seo?.title) {
+    return { title: page.seo.title, description: page.seo.description ?? undefined };
+  }
+  const t = await getTranslations({ locale, namespace: 'home' });
+  return { title: `DS SmartLawn — ${t('hero.title')}`, description: t('hero.subtitle') };
+}
 
 export default async function HomePage({
   params,
@@ -26,39 +33,22 @@ export default async function HomePage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const t = await getTranslations('home');
+  const page = await fetchPage('home');
+
+  if (!page) {
+    const t = await getTranslations('home');
+    return (
+      <div className="mx-auto max-w-container px-6 py-24 text-center">
+        <h1 className="text-3xl font-bold text-brand-dark">{t('hero.title')}</h1>
+        <p className="mt-4 text-gray-600">{t('sections.placeholder')}</p>
+      </div>
+    );
+  }
 
   return (
     <>
-      {/* Section 1: Hero */}
-      <section className="bg-brand-light">
-        <div className="mx-auto max-w-6xl px-4 py-24 text-center">
-          <h1 className="text-4xl font-bold tracking-tight text-brand-dark sm:text-5xl">
-            {t('hero.title')}
-          </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-lg text-gray-600">{t('hero.subtitle')}</p>
-          <div className="mt-8">
-            <Link
-              href="/book"
-              className="rounded-md bg-brand px-6 py-3 text-base font-medium text-white hover:bg-brand-dark"
-            >
-              {t('hero.cta')}
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Sections 2-9: CMS 占位（后续从 M1 CMS 拉取并按 schema 渲染） */}
-      {HOME_SECTIONS.slice(1).map((key, idx) => (
-        <section key={key} className="border-b border-gray-100">
-          <div className="mx-auto max-w-6xl px-4 py-16">
-            <p className="text-xs font-semibold uppercase tracking-wide text-brand">
-              Section {idx + 2} · {key}
-            </p>
-            <h2 className="mt-2 text-2xl font-semibold text-gray-900">{t('sections.intro')}</h2>
-            <p className="mt-3 text-gray-500">{t('sections.placeholder')}</p>
-          </div>
-        </section>
+      {page.sections.map((section, i) => (
+        <SectionRenderer key={`${section.type}-${i}`} section={section} locale={locale as Locale} />
       ))}
     </>
   );

@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { AuditModule } from './audit/audit.module';
 import { UsersModule } from './users/users.module';
 import { RolesModule } from './roles/roles.module';
+import { CmsModule } from './cms/cms.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { PermissionsGuard } from './rbac/permissions.guard';
 
@@ -22,6 +23,7 @@ import { PermissionsGuard } from './rbac/permissions.guard';
     HealthModule,
     UsersModule,
     RolesModule,
+    CmsModule,
   ],
   providers: [
     // 全局守卫：先 JWT 鉴权（注入 request.user），再 RBAC 权限校验。
