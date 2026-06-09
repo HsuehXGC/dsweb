@@ -239,6 +239,47 @@ export const api = {
   updateTicket(id: string, body: Record<string, unknown>) {
     return request(`/admin/support/tickets/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
   },
+
+  // ---- M8 分析 ----
+  dashboard() {
+    return request<Record<string, number>>('/admin/analytics/dashboard');
+  },
+  funnel() {
+    return request<{ stages: Array<{ stage: string; label: string; count: number }> }>(
+      '/admin/analytics/conversion-funnel',
+    );
+  },
+  salesByProduct() {
+    return request<Array<{ name: string; qty: number; revenue: number }>>(
+      '/admin/analytics/sales-by-product',
+    );
+  },
+
+  // ---- M7 营销 ----
+  listDiscounts() {
+    return request<any[]>('/admin/marketing/discounts');
+  },
+  createDiscount(body: Record<string, unknown>) {
+    return request('/admin/marketing/discounts', { method: 'POST', body: JSON.stringify(body) });
+  },
+  toggleDiscount(id: string, isActive: boolean) {
+    return request(`/admin/marketing/discounts/${id}/toggle`, {
+      method: 'PATCH',
+      body: JSON.stringify({ is_active: isActive }),
+    });
+  },
+  listCampaigns() {
+    return request<any[]>('/admin/marketing/campaigns');
+  },
+  createCampaign(body: Record<string, unknown>) {
+    return request<any>('/admin/marketing/campaigns', { method: 'POST', body: JSON.stringify(body) });
+  },
+  sendCampaign(id: string, body: string) {
+    return request(`/admin/marketing/campaigns/${id}/send`, {
+      method: 'POST',
+      body: JSON.stringify({ body }),
+    });
+  },
 };
 
 export { ApiError };

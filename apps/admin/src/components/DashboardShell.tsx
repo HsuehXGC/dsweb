@@ -19,6 +19,7 @@ import {
   CalendarOutlined,
   ToolOutlined,
   CustomerServiceOutlined,
+  NotificationOutlined,
   LogoutOutlined,
 } from '@ant-design/icons';
 import { session } from '@/lib/session';
@@ -58,6 +59,7 @@ const MENU = [
     ],
   },
   { key: '/support', icon: <CustomerServiceOutlined />, label: '客服收件箱' },
+  { key: '/marketing', icon: <NotificationOutlined />, label: '营销活动' },
   { key: '/cms', icon: <FileTextOutlined />, label: 'CMS 内容' },
   { key: '/users', icon: <TeamOutlined />, label: '账号管理' },
   { key: '/roles', icon: <SafetyOutlined />, label: '角色权限' },
