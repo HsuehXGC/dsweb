@@ -18,7 +18,8 @@
     "db:generate": "pnpm --filter @dsweb/api prisma generate",
     "db:migrate": "pnpm --filter @dsweb/api prisma migrate dev",
     "db:seed": "pnpm --filter @dsweb/api db:seed",
-    "db:seed:demo": "pnpm --filter @dsweb/api exec ts-node prisma/seed-demo.ts"
+    "db:seed:demo": "pnpm --filter @dsweb/api exec ts-node prisma/seed-demo.ts",
+    "db:seed:enrich": "pnpm --filter @dsweb/api exec ts-node prisma/seed-enrich.ts"
   },
   "devDependencies": {
     "prettier": "^3.3.3",

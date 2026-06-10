@@ -48,7 +48,9 @@ pnpm install
 cp .env.example .env      # 填入 DATABASE_URL 等
 pnpm db:generate          # 生成 Prisma Client
 pnpm db:migrate           # 建表（需数据库可连接）
-pnpm db:seed              # 预置 10 个标准角色 + 超管账号
+pnpm db:seed              # 预置 10 个标准角色 + 超管 + 主页/产品/配置
+pnpm db:seed:demo         # 演示数据：客户/线索/订单/订阅/工单/客服/折扣码（幂等）
+pnpm db:seed:enrich       # 补充填充：活动/邮件群发/对话/知识库/报价/博客（幂等）
 ```
 
 ### 3. 启动
