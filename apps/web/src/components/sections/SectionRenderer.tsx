@@ -110,7 +110,7 @@ function ThreeWays({ c, wrap }: { c: C; wrap: string }) {
                 <p className="mt-3 flex-1 text-gray-600">{card.desc}</p>
                 <p className="mt-4 text-sm text-gray-500">{card.points}</p>
                 <div className="mt-6">
-                  <CtaButton href="/book" variant={card.recommended ? 'primary' : 'secondary'}>
+                  <CtaButton href={card.href ?? '/book'} variant={card.recommended ? 'primary' : 'secondary'}>
                     {card.cta}
                   </CtaButton>
                 </div>

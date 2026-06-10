@@ -10,9 +10,12 @@ interface CheckoutItem {
   quantity: number;
 }
 
+export type Fulfillment = 'delivery' | 'pickup';
+
 interface CheckoutInput {
   items: CheckoutItem[];
   customer: { email: string; first_name?: string; last_name?: string; phone?: string };
+  fulfillment?: Fulfillment; // delivery=送货上门(加运费) / pickup=Burlington 门店自提+培训
   shipping_address?: Record<string, unknown>;
   billing_address?: Record<string, unknown>;
   payment_token: string;
@@ -29,11 +32,11 @@ export class CommerceService {
     private readonly mail: MailService,
   ) {}
 
-  /** 询价：根据 items + discount 计算金额（前端结账页展示用，不下单） */
-  async quote(items: CheckoutItem[], discountCode?: string) {
+  /** 询价：根据 items + discount + 履约方式 计算金额（前端结账页展示用，不下单） */
+  async quote(items: CheckoutItem[], discountCode?: string, fulfillment: Fulfillment = 'delivery') {
     const { lines, subtotal } = await this.resolveLines(items);
     const tax = await this.calcTax(subtotal);
-    const shipping = await this.calcShipping(subtotal);
+    const shipping = await this.calcShipping(subtotal, fulfillment);
     const discount = await this.calcDiscount(subtotal, discountCode);
     const total = Math.max(0, round2(subtotal + tax + shipping - discount));
     return {
@@ -49,11 +52,19 @@ export class CommerceService {
   /** 结账：建单→扣款→扣库存→邮件。返回订单结果。 */
   async checkout(input: CheckoutInput) {
     if (!input.items?.length) throw new BadRequestException('Cart is empty');
+    const fulfillment: Fulfillment = input.fulfillment ?? 'delivery';
     const { lines, subtotal } = await this.resolveLines(input.items);
     const tax = await this.calcTax(subtotal);
-    const shipping = await this.calcShipping(subtotal);
+    const shipping = await this.calcShipping(subtotal, fulfillment);
     const discount = await this.calcDiscount(subtotal, input.discount_code);
     const total = Math.max(0, round2(subtotal + tax + shipping - discount));
+
+    // 履约信息写入 shippingAddress JSON
+    const pickupLocation = (await this.settingStr('shipping.pickup_location')) || 'Burlington, MA';
+    const fulfillmentInfo =
+      fulfillment === 'pickup'
+        ? { method: 'pickup', location: pickupLocation, training: true }
+        : { method: 'delivery', ...(input.shipping_address ?? {}) };
 
     // 客户：按 email 找或建
     const customer =
@@ -83,7 +94,7 @@ export class CommerceService {
       discount: round2(discount),
       total,
       billingAddress: input.billing_address,
-      shippingAddress: input.shipping_address,
+      shippingAddress: fulfillmentInfo,
     });
 
     // 扣款
@@ -109,8 +120,16 @@ export class CommerceService {
         .catch(() => undefined);
     }
 
-    // 确认邮件
+    // 确认邮件（按履约方式给不同后续说明）
     const locale = input.locale ?? 'en';
+    const nextZh =
+      fulfillment === 'pickup'
+        ? `请到 ${pickupLocation} 门店自提，我们会为你提供现场培训。`
+        : '我们会尽快安排送货上门。';
+    const nextEn =
+      fulfillment === 'pickup'
+        ? `Pick up at our ${pickupLocation} store — on-site training included.`
+        : 'We’ll arrange delivery to your address shortly.';
     await this.mail.send({
       to: customer.email,
       subject:
@@ -119,8 +138,8 @@ export class CommerceService {
           : `DS SmartLawn · Order confirmation ${order.number}`,
       text:
         locale === 'zh'
-          ? `感谢下单！\n订单号：${order.number}\n合计：$${total.toFixed(2)}\n我们会尽快备货发货。`
-          : `Thank you for your order!\nOrder: ${order.number}\nTotal: $${total.toFixed(2)}\nWe’ll prepare your shipment shortly.`,
+          ? `感谢下单！\n订单号：${order.number}\n合计：$${total.toFixed(2)}\n${nextZh}`
+          : `Thank you for your order!\nOrder: ${order.number}\nTotal: $${total.toFixed(2)}\n${nextEn}`,
     });
 
     return {
@@ -128,6 +147,7 @@ export class CommerceService {
       order_number: order.number,
       total,
       status: 'paid',
+      fulfillment,
     };
   }
 
@@ -159,16 +179,23 @@ export class CommerceService {
     return typeof v === 'number' ? v : Number(v) || 0;
   }
 
+  private async settingStr(key: string): Promise<string> {
+    const row = await this.prisma.setting.findUnique({ where: { key } });
+    return row && typeof row.value === 'string' ? row.value : '';
+  }
+
   private async calcTax(subtotal: number) {
     const rate = await this.setting('tax.ma_rate');
     return (subtotal * rate) / 100;
   }
 
-  private async calcShipping(subtotal: number) {
-    const flat = await this.setting('shipping.flat_rate');
+  /** 自提免运费；送货上门收运费（高于免运门槛则免）。 */
+  private async calcShipping(subtotal: number, fulfillment: Fulfillment) {
+    if (fulfillment === 'pickup') return 0;
+    const fee = (await this.setting('shipping.delivery_fee')) || (await this.setting('shipping.flat_rate'));
     const threshold = await this.setting('shipping.free_threshold');
     if (threshold > 0 && subtotal >= threshold) return 0;
-    return flat;
+    return fee;
   }
 
   private async calcDiscount(subtotal: number, code?: string) {

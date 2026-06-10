@@ -57,7 +57,8 @@
         { "name": "Weekend Trial", "price": "$99", "desc": "A full weekend on your own lawn. Fee applies toward purchase." },
         { "name": "Monthly Rental", "price": "$199/mo", "desc": "Month-to-month rental with full support and maintenance." },
         { "name": "Rent-to-Own", "price": "Flexible", "desc": "Rental fees apply toward purchase — own it when you're ready." }
-      ]
+      ],
+      "note": "Pay online, then choose home delivery or free Burlington store pickup (with training) at checkout."
     },
     "about": {
       "title": "About DS SmartLawn",
@@ -128,6 +129,11 @@
     "checkout": "Checkout",
     "contact": "Contact",
     "shipping": "Shipping address",
+    "fulfillment": "How would you like to receive it?",
+    "delivery": "Home Delivery",
+    "deliveryDesc": "We deliver and set up at your address.",
+    "pickup": "Burlington Store Pickup",
+    "pickupDesc": "Pick up at our Burlington store — free, with hands-on training included.",
     "payment": "Payment",
     "cardHint": "Demo gateway — use any value. Enter a token containing 'decline' to simulate a failed payment.",
     "paymentToken": "Card token",

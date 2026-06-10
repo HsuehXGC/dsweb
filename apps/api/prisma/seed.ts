@@ -259,6 +259,42 @@ async function seedErp() {
       sku: 'MEM-MONTHLY',
       stock: 0,
     },
+    {
+      slug: 'rental-weekend-trial',
+      name: 'Weekend Trial Rental',
+      type: 'one_time',
+      basePrice: 99,
+      description: {
+        en: 'A full weekend with a robotic mower on your own lawn. Fee applies toward purchase.',
+        zh: '在你自家草坪上体验一个完整周末。费用可抵扣购机款。',
+      },
+      sku: 'RENT-WEEKEND',
+      stock: 15,
+    },
+    {
+      slug: 'rental-monthly',
+      name: 'Monthly Rental',
+      type: 'one_time',
+      basePrice: 199,
+      description: {
+        en: 'One month of robotic mowing with full support and maintenance.',
+        zh: '一个月的智能割草租用，含完整支持与维护。',
+      },
+      sku: 'RENT-MONTHLY',
+      stock: 10,
+    },
+    {
+      slug: 'rent-to-own',
+      name: 'Rent-to-Own Starter',
+      type: 'one_time',
+      basePrice: 299,
+      description: {
+        en: 'Start renting now; fees apply toward purchase — own it when you’re ready.',
+        zh: '先租后买：租金可抵扣购机款，准备好了即可买断。',
+      },
+      sku: 'RENT-TO-OWN',
+      stock: 10,
+    },
   ];
 
   for (const p of products) {

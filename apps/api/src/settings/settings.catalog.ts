@@ -42,9 +42,11 @@ export const SETTINGS_CATALOG: SettingDef[] = [
   // 税费
   { key: 'tax.ma_rate', group: 'tax', label: 'MA 州销售税率(%)', type: 'number', public: false, default: 6.25 },
 
-  // 运费
+  // 运费 / 履约
   { key: 'shipping.flat_rate', group: 'shipping', label: '统一运费($)', type: 'number', public: false, default: 0 },
+  { key: 'shipping.delivery_fee', group: 'shipping', label: '送货上门费($)', type: 'number', public: true, default: 149 },
   { key: 'shipping.free_threshold', group: 'shipping', label: '免运费门槛($)', type: 'number', public: false, default: 0 },
+  { key: 'shipping.pickup_location', group: 'shipping', label: '自提门店地点', type: 'text', public: true, default: 'Burlington, MA' },
 
   // 第三方集成（敏感）
   { key: 'integrations.google_maps_key', group: 'integrations', label: 'Google Maps API Key', type: 'secret', public: false, default: '' },

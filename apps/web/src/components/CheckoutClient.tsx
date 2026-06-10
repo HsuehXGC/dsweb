@@ -10,6 +10,8 @@ import { fetchQuote, submitCheckout, type Quote, type CheckoutResult } from '@/l
 const inputCls =
   'w-full rounded-md border border-gray-300 px-3 py-2 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand';
 
+type Fulfillment = 'delivery' | 'pickup';
+
 export function CheckoutClient({ locale }: { locale: Locale }) {
   const t = useTranslations('shop');
   const items = useCart();
@@ -17,6 +19,8 @@ export function CheckoutClient({ locale }: { locale: Locale }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<CheckoutResult | null>(null);
+  const [fulfillment, setFulfillment] = useState<Fulfillment>('delivery');
+  const [deliveryFee, setDeliveryFee] = useState(0);
   const [form, setForm] = useState({
     first_name: '',
     last_name: '',
@@ -36,13 +40,25 @@ export function CheckoutClient({ locale }: { locale: Locale }) {
       setQuote(null);
       return;
     }
-    const q = await fetchQuote(items.map((i) => ({ sku_code: i.sku_code, quantity: i.quantity })));
+    const q = await fetchQuote(
+      items.map((i) => ({ sku_code: i.sku_code, quantity: i.quantity })),
+      undefined,
+      fulfillment,
+    );
     setQuote(q);
-  }, [items]);
+  }, [items, fulfillment]);
 
   useEffect(() => {
     void refreshQuote();
   }, [refreshQuote]);
+
+  useEffect(() => {
+    const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000/api/v1';
+    fetch(`${base}/public/settings`)
+      .then((r) => r.json())
+      .then((j) => setDeliveryFee(Number(j?.data?.['shipping.delivery_fee'] ?? 0)))
+      .catch(() => undefined);
+  }, []);
 
   const placeOrder = async () => {
     setSubmitting(true);
@@ -56,12 +72,11 @@ export function CheckoutClient({ locale }: { locale: Locale }) {
           last_name: form.last_name,
           phone: form.phone,
         },
-        shipping_address: {
-          street: form.street,
-          city: form.city,
-          state: form.state,
-          zip: form.zip,
-        },
+        fulfillment,
+        shipping_address:
+          fulfillment === 'delivery'
+            ? { street: form.street, city: form.city, state: form.state, zip: form.zip }
+            : undefined,
         payment_token: form.token,
         locale,
       });
@@ -102,7 +117,11 @@ export function CheckoutClient({ locale }: { locale: Locale }) {
     );
   }
 
-  const canSubmit = form.email && form.first_name && form.street && form.city && form.zip && form.token;
+  const canSubmit =
+    form.email &&
+    form.first_name &&
+    form.token &&
+    (fulfillment === 'pickup' || (form.street && form.city && form.zip));
 
   return (
     <div className="grid gap-8 md:grid-cols-5">
@@ -120,14 +139,43 @@ export function CheckoutClient({ locale }: { locale: Locale }) {
           </div>
         </section>
 
+        {/* 履约方式：送货上门(加运费) / Burlington 门店自提+培训 */}
         <section className="rounded-xl bg-white p-6 shadow-sm">
-          <h2 className="mb-3 font-semibold">{t('shipping')}</h2>
-          <div className="grid grid-cols-6 gap-3">
-            <input className={`${inputCls} col-span-6`} placeholder={t('street')} value={form.street} onChange={(e) => set('street', e.target.value)} />
-            <input className={`${inputCls} col-span-3`} placeholder={t('city')} value={form.city} onChange={(e) => set('city', e.target.value)} />
-            <input className={`${inputCls} col-span-1`} placeholder={t('state')} value={form.state} onChange={(e) => set('state', e.target.value)} />
-            <input className={`${inputCls} col-span-2`} placeholder={t('zip')} value={form.zip} onChange={(e) => set('zip', e.target.value)} />
+          <h2 className="mb-3 font-semibold">{t('fulfillment')}</h2>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => setFulfillment('delivery')}
+              className={`rounded-lg border p-4 text-left transition-all ${
+                fulfillment === 'delivery' ? 'border-brand bg-brand-light' : 'border-gray-200 hover:border-brand-mid'
+              }`}
+            >
+              <span className="block font-semibold text-brand-dark">
+                🚚 {t('delivery')}
+                {deliveryFee > 0 && <span className="ml-1 text-brand">+${deliveryFee}</span>}
+              </span>
+              <span className="mt-1 block text-sm text-gray-500">{t('deliveryDesc')}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setFulfillment('pickup')}
+              className={`rounded-lg border p-4 text-left transition-all ${
+                fulfillment === 'pickup' ? 'border-brand bg-brand-light' : 'border-gray-200 hover:border-brand-mid'
+              }`}
+            >
+              <span className="block font-semibold text-brand-dark">🏬 {t('pickup')}</span>
+              <span className="mt-1 block text-sm text-gray-500">{t('pickupDesc')}</span>
+            </button>
           </div>
+
+          {fulfillment === 'delivery' && (
+            <div className="mt-4 grid grid-cols-6 gap-3">
+              <input className={`${inputCls} col-span-6`} placeholder={t('street')} value={form.street} onChange={(e) => set('street', e.target.value)} />
+              <input className={`${inputCls} col-span-3`} placeholder={t('city')} value={form.city} onChange={(e) => set('city', e.target.value)} />
+              <input className={`${inputCls} col-span-1`} placeholder={t('state')} value={form.state} onChange={(e) => set('state', e.target.value)} />
+              <input className={`${inputCls} col-span-2`} placeholder={t('zip')} value={form.zip} onChange={(e) => set('zip', e.target.value)} />
+            </div>
+          )}
         </section>
 
         <section className="rounded-xl bg-white p-6 shadow-sm">

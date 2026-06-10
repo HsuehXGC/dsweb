@@ -57,7 +57,8 @@
         { "name": "周末体验", "price": "$99", "desc": "在你自家草坪上体验一个完整周末。费用可抵扣购机款。" },
         { "name": "月租", "price": "$199/月", "desc": "按月租用，含完整支持与维护。" },
         { "name": "租后转购", "price": "灵活", "desc": "租金可抵扣购机款——准备好了即可买断。" }
-      ]
+      ],
+      "note": "线上付款后，在结账时选择「送货上门」或「Burlington 门店免费自提（含培训）」。"
     },
     "about": {
       "title": "关于 DS SmartLawn",
@@ -128,6 +129,11 @@
     "checkout": "结账",
     "contact": "联系方式",
     "shipping": "收货地址",
+    "fulfillment": "你想怎么收货？",
+    "delivery": "送货上门",
+    "deliveryDesc": "我们配送并到你的地址安装调试。",
+    "pickup": "Burlington 门店自提",
+    "pickupDesc": "到 Burlington 门店自提——免费，含现场上手培训。",
     "payment": "支付",
     "cardHint": "演示网关——任意值即可。输入含 'decline' 的 token 可模拟支付失败。",
     "paymentToken": "卡 token",

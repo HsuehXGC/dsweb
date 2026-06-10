@@ -49,11 +49,12 @@ export interface Quote {
 export async function fetchQuote(
   items: Array<{ sku_code: string; quantity: number }>,
   discountCode?: string,
+  fulfillment: 'delivery' | 'pickup' = 'delivery',
 ): Promise<Quote | null> {
   const res = await fetch(`${API_BASE}/public/checkout/quote`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ items, discount_code: discountCode }),
+    body: JSON.stringify({ items, discount_code: discountCode, fulfillment }),
   });
   if (!res.ok) return null;
   return (await res.json()).data as Quote;

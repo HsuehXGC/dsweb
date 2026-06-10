@@ -31,6 +31,7 @@ class QuoteDto {
   @IsArray() @ValidateNested({ each: true }) @Type(() => CheckoutItemDto)
   items!: CheckoutItemDto[];
   @IsOptional() @IsString() discount_code?: string;
+  @IsOptional() @IsIn(['delivery', 'pickup']) fulfillment?: 'delivery' | 'pickup';
 }
 
 class CheckoutDto {
@@ -41,6 +42,7 @@ class CheckoutDto {
   customer!: CheckoutCustomerDto;
 
   @IsString() payment_token!: string;
+  @IsOptional() @IsIn(['delivery', 'pickup']) fulfillment?: 'delivery' | 'pickup';
   @IsOptional() @IsObject() shipping_address?: Record<string, unknown>;
   @IsOptional() @IsObject() billing_address?: Record<string, unknown>;
   @IsOptional() @IsString() discount_code?: string;
@@ -56,7 +58,7 @@ export class CommerceController {
   @Post('checkout/quote')
   @ApiOperation({ summary: '结账询价（计算税费/运费/折扣/合计）' })
   quote(@Body() dto: QuoteDto) {
-    return this.commerce.quote(dto.items, dto.discount_code);
+    return this.commerce.quote(dto.items, dto.discount_code, dto.fulfillment ?? 'delivery');
   }
 
   @Public()
