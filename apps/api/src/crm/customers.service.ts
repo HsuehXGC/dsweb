@@ -74,6 +74,26 @@ export class CustomersService {
     return this.prisma.customer.update({ where: { id }, data });
   }
 
+  // ---- 设备（已购机器人：序列号 + 保修） ----
+  addDevice(
+    customerId: bigint,
+    data: { model: string; serialNumber: string; installedAt?: Date; warrantyMonths?: number },
+  ) {
+    const installed = data.installedAt ?? new Date();
+    const warrantyEnd = data.warrantyMonths
+      ? new Date(installed.getTime() + data.warrantyMonths * 30 * 24 * 60 * 60 * 1000)
+      : new Date(installed.getTime() + 24 * 30 * 24 * 60 * 60 * 1000); // 默认 24 个月
+    return this.prisma.device.create({
+      data: {
+        customerId,
+        model: data.model,
+        serialNumber: data.serialNumber,
+        installedAt: installed,
+        warrantyEnd,
+      },
+    });
+  }
+
   // ---- 地块 ----
   addProperty(
     customerId: bigint,

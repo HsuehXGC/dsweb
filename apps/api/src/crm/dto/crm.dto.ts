@@ -40,6 +40,12 @@ export class CreatePropertyDto {
   @IsOptional() @IsString() notes?: string;
 }
 
+export class CreateDeviceDto {
+  @IsString() model!: string;
+  @IsString() serial_number!: string;
+  @IsOptional() @IsInt() warranty_months?: number;
+}
+
 export class CreateDealDto {
   @IsString() customer_id!: string;
   @IsString() title!: string;

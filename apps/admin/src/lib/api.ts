@@ -164,6 +164,18 @@ export const api = {
   updateOrderStatus(id: string, status: string) {
     return request(`/admin/orders/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) });
   },
+  assignOrderOwner(id: string, ownerId: string) {
+    return request(`/admin/orders/${id}/owner`, { method: 'PATCH', body: JSON.stringify({ owner_id: ownerId }) });
+  },
+  listUsers() {
+    return request<any[]>('/admin/users');
+  },
+  createWorkOrder(body: Record<string, unknown>) {
+    return request<any>('/admin/work-orders', { method: 'POST', body: JSON.stringify(body) });
+  },
+  registerDevice(customerId: string, body: Record<string, unknown>) {
+    return request(`/admin/crm/customers/${customerId}/devices`, { method: 'POST', body: JSON.stringify(body) });
+  },
   listProducts() {
     return request<any[]>('/admin/products');
   },

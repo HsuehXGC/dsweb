@@ -46,7 +46,7 @@ export class OrdersService {
     const order = await this.prisma.order.findFirst({
       where: { id, deletedAt: null },
       include: {
-        customer: { select: { uuid: true, email: true, firstName: true, lastName: true } },
+        customer: { select: { id: true, uuid: true, email: true, firstName: true, lastName: true } },
         items: { include: { sku: { include: { product: { select: { name: true } } } } } },
         payments: true,
         invoices: true,
@@ -60,6 +60,13 @@ export class OrdersService {
     const o = await this.prisma.order.findFirst({ where: { id, deletedAt: null } });
     if (!o) throw new NotFoundException('Order not found');
     return this.prisma.order.update({ where: { id }, data: { status } });
+  }
+
+  /** 分配归属业务员（owner） */
+  async assignOwner(id: bigint, ownerId: bigint | null) {
+    const o = await this.prisma.order.findFirst({ where: { id, deletedAt: null } });
+    if (!o) throw new NotFoundException('Order not found');
+    return this.prisma.order.update({ where: { id }, data: { ownerId } });
   }
 
   // ---------- 供结账(C3)/订阅(C4)调用 ----------

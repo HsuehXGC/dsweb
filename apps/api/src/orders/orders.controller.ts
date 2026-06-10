@@ -10,6 +10,9 @@ import { AuditService } from '../audit/audit.service';
 class UpdateStatusDto {
   @IsString() status!: string;
 }
+class AssignOwnerDto {
+  @IsString() owner_id!: string;
+}
 
 @ApiTags('orders-admin')
 @ApiBearerAuth()
@@ -52,5 +55,11 @@ export class OrdersAdminController {
       changes: { status: dto.status },
     });
     return o;
+  }
+
+  @Patch(':id/owner')
+  @RequirePermissions('orders.write')
+  async assignOwner(@Param('id') id: string, @Body() dto: AssignOwnerDto) {
+    return this.orders.assignOwner(BigInt(id), dto.owner_id ? BigInt(dto.owner_id) : null);
   }
 }

@@ -97,6 +97,7 @@ export class UsersService {
   }
 
   private serialize(u: {
+    id: bigint;
     uuid: string;
     email: string;
     firstName: string | null;
@@ -107,6 +108,7 @@ export class UsersService {
     role: { code: string; name: string };
   }) {
     return {
+      id: u.id,
       uuid: u.uuid,
       email: u.email,
       first_name: u.firstName,

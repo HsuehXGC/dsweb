@@ -10,6 +10,7 @@ import type { AuthenticatedUser } from '../auth/auth.types';
 import { AuditService } from '../audit/audit.service';
 import {
   CreateActivityDto,
+  CreateDeviceDto,
   CreateCustomerDto,
   CreateDealDto,
   CreatePropertyDto,
@@ -135,6 +136,16 @@ export class CrmController {
   @RequirePermissions('customers.write')
   addProperty(@Param('id') id: string, @Body() dto: CreatePropertyDto) {
     return this.customers.addProperty(BigInt(id), dto);
+  }
+
+  @Post('customers/:id/devices')
+  @RequirePermissions('customers.write')
+  addDevice(@Param('id') id: string, @Body() dto: CreateDeviceDto) {
+    return this.customers.addDevice(BigInt(id), {
+      model: dto.model,
+      serialNumber: dto.serial_number,
+      warrantyMonths: dto.warranty_months,
+    });
   }
 
   // ---------- Deals (pipeline) ----------
