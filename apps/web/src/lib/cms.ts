@@ -35,6 +35,35 @@ export async function fetchPage(slug: string): Promise<CmsPage | null> {
   }
 }
 
+export interface BlogPost {
+  uuid: string;
+  slug: string;
+  category: string | null;
+  tags: string[] | null;
+  content: Partial<Record<Locale, { title?: string; body?: string }>>;
+  publishedAt: string | null;
+}
+
+export async function fetchPosts(): Promise<BlogPost[]> {
+  try {
+    const res = await fetch(`${API_BASE}/public/posts`, { cache: 'no-store' });
+    if (!res.ok) return [];
+    return ((await res.json()).data ?? []) as BlogPost[];
+  } catch {
+    return [];
+  }
+}
+
+export async function fetchPost(slug: string): Promise<BlogPost | null> {
+  try {
+    const res = await fetch(`${API_BASE}/public/posts/${slug}`, { cache: 'no-store' });
+    if (!res.ok) return null;
+    return (await res.json()).data as BlogPost;
+  } catch {
+    return null;
+  }
+}
+
 /** 取某个 section 第一个 block 在指定语言下的内容 */
 export function blockContent<T = Record<string, unknown>>(
   section: CmsSection,

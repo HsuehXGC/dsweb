@@ -35,6 +35,23 @@ export class CmsService {
     };
   }
 
+  /** 公开博客列表（已发布） */
+  listPublicPosts(category?: string) {
+    return this.prisma.post.findMany({
+      where: { status: PublishStatus.published, deletedAt: null, ...(category ? { category } : {}) },
+      orderBy: { publishedAt: 'desc' },
+      select: { uuid: true, slug: true, category: true, tags: true, content: true, publishedAt: true },
+    });
+  }
+
+  async getPublicPost(slug: string) {
+    const post = await this.prisma.post.findFirst({
+      where: { slug, status: PublishStatus.published, deletedAt: null },
+    });
+    if (!post) throw new NotFoundException(`Post not found: ${slug}`);
+    return post;
+  }
+
   // ---------- 后台 ----------
 
   listPages() {

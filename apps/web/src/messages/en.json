@@ -22,6 +22,57 @@
   "footer": {
     "rights": "DS SmartLawn Service LLC. All rights reserved."
   },
+  "pages": {
+    "cta": "Book a Free Assessment",
+    "services": {
+      "title": "Our Services",
+      "subtitle": "From first visit to year-round care — we handle every step.",
+      "items": [
+        { "name": "On-Site Assessment", "desc": "We walk your lawn, measure terrain, check WiFi, and recommend the right robot — free, no obligation." },
+        { "name": "Installation & Setup", "desc": "RTK base station, lawn mapping, no-go zones, and tuning to your terrain." },
+        { "name": "Seasonal Maintenance", "desc": "Blade changes, cleaning, diagnostics and firmware updates throughout the season." },
+        { "name": "Repair", "desc": "Fast local repair for mowers and base stations — one call away." },
+        { "name": "Winterization", "desc": "End-of-season cleaning, safe storage, and spring-ready prep." }
+      ]
+    },
+    "membership": {
+      "title": "SmartLawn Membership",
+      "subtitle": "Keep your robotic mower running like new — all season, every season.",
+      "price": "$80",
+      "unit": "/month",
+      "note": "Cancel anytime. Annual option available.",
+      "benefits": [
+        "Priority service & response",
+        "Remote diagnostics & firmware updates",
+        "Seasonal maintenance reminders",
+        "Discounts on parts & accessories",
+        "Winterization included"
+      ],
+      "cta": "Manage in Member Center"
+    },
+    "rental": {
+      "title": "Rent or Try First",
+      "subtitle": "Try a robotic mower on your own lawn before you commit.",
+      "tiers": [
+        { "name": "Weekend Trial", "price": "$99", "desc": "A full weekend on your own lawn. Fee applies toward purchase." },
+        { "name": "Monthly Rental", "price": "$199/mo", "desc": "Month-to-month rental with full support and maintenance." },
+        { "name": "Rent-to-Own", "price": "Flexible", "desc": "Rental fees apply toward purchase — own it when you're ready." }
+      ]
+    },
+    "about": {
+      "title": "About DS SmartLawn",
+      "body": "We're a small, locally owned team based in Eastern Massachusetts. We sell, install, and service robotic lawnmowers for large yards, hobby farms, and country properties.",
+      "promiseTitle": "A Promise from Our Founder",
+      "promise": "Every customer matters, every install gets our full attention, and every problem gets a personal response. We'd rather earn one neighbor at a time than chase scale we can't deliver on."
+    },
+    "blog": {
+      "title": "Blog",
+      "subtitle": "Lawn care tips and product guides.",
+      "readMore": "Read more",
+      "empty": "No posts yet.",
+      "back": "Back to blog"
+    }
+  },
   "book": {
     "title": "Book a Free On-Site Assessment",
     "subtitle": "No pressure, no obligation. Tell us about your lawn and we’ll come take a look.",
