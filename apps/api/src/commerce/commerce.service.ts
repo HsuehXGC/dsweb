@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { OrdersService, type OrderLineInput } from '../orders/orders.service';
@@ -30,6 +31,7 @@ export class CommerceService {
     private readonly orders: OrdersService,
     private readonly payment: PaymentService,
     private readonly mail: MailService,
+    private readonly config: ConfigService,
   ) {}
 
   /** 询价：根据 items + discount + 履约方式 计算金额（前端结账页展示用，不下单） */
@@ -140,6 +142,26 @@ export class CommerceService {
         locale === 'zh'
           ? `感谢下单！\n订单号：${order.number}\n合计：$${total.toFixed(2)}\n${nextZh}`
           : `Thank you for your order!\nOrder: ${order.number}\nTotal: $${total.toFixed(2)}\n${nextEn}`,
+    });
+
+    // 公司/业务员通知（避免漏单）—— 对应断点 #5
+    const companyTo = this.config.get<string>('COMPANY_NOTIFY_EMAIL') ?? 'ops@dssmartlawn.com';
+    const itemLines = lines.map((l) => `  - ${l.code} ×${l.quantity} @$${l.unitPrice}`).join('\n');
+    const fulfillmentLine =
+      fulfillment === 'pickup'
+        ? `自提 @ ${pickupLocation}（含培训）`
+        : `送货上门 → ${[
+            (input.shipping_address ?? {}).street,
+            (input.shipping_address ?? {}).city,
+            (input.shipping_address ?? {}).state,
+            (input.shipping_address ?? {}).zip,
+          ]
+            .filter(Boolean)
+            .join(', ')}`;
+    await this.mail.send({
+      to: companyTo,
+      subject: `[New Order] ${order.number} · $${total.toFixed(2)} · ${fulfillment}`,
+      text: `新订单 ${order.number}\n客户：${input.customer.first_name ?? ''} ${input.customer.last_name ?? ''} <${customer.email}> ${input.customer.phone ?? ''}\n履约：${fulfillmentLine}\n金额：小计 $${subtotal} / 税 $${round2(tax)} / 运费 $${round2(shipping)} / 合计 $${total.toFixed(2)}\n明细：\n${itemLines}\n\n请在后台「ERP → 订单 → ${order.number}」处理：分配业务员、派交付/培训工单、登记设备。`,
     });
 
     return {
