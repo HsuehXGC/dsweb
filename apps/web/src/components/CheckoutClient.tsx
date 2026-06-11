@@ -6,6 +6,7 @@ import type { Locale } from '@dsweb/types';
 import { Link } from '@/i18n/navigation';
 import { cart, useCart } from '@/lib/cart';
 import { fetchQuote, submitCheckout, type Quote, type CheckoutResult } from '@/lib/shop';
+import { CollectJsFields, collectJsEnabled, triggerCollectJs } from '@/components/CollectJsFields';
 
 const inputCls =
   'w-full rounded-md border border-gray-300 px-3 py-2 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand';
@@ -60,32 +61,49 @@ export function CheckoutClient({ locale }: { locale: Locale }) {
       .catch(() => undefined);
   }, []);
 
-  const placeOrder = async () => {
-    setSubmitting(true);
-    setError(null);
-    try {
-      const res = await submitCheckout({
-        items: items.map((i) => ({ sku_code: i.sku_code, quantity: i.quantity })),
-        customer: {
-          email: form.email,
-          first_name: form.first_name,
-          last_name: form.last_name,
-          phone: form.phone,
-        },
-        fulfillment,
-        shipping_address:
-          fulfillment === 'delivery'
-            ? { street: form.street, city: form.city, state: form.state, zip: form.zip }
-            : undefined,
-        payment_token: form.token,
-        locale,
-      });
-      cart.clear();
-      setResult(res);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Checkout failed');
-    } finally {
-      setSubmitting(false);
+  const submitWithToken = useCallback(
+    async (token: string) => {
+      setSubmitting(true);
+      setError(null);
+      try {
+        const res = await submitCheckout({
+          items: items.map((i) => ({ sku_code: i.sku_code, quantity: i.quantity })),
+          customer: {
+            email: form.email,
+            first_name: form.first_name,
+            last_name: form.last_name,
+            phone: form.phone,
+          },
+          fulfillment,
+          shipping_address:
+            fulfillment === 'delivery'
+              ? { street: form.street, city: form.city, state: form.state, zip: form.zip }
+              : undefined,
+          payment_token: token,
+          locale,
+        });
+        cart.clear();
+        setResult(res);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Checkout failed');
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    [items, form, fulfillment, locale],
+  );
+
+  const placeOrder = () => {
+    if (collectJsEnabled) {
+      // 触发 Collect.js 令牌化；token 经 CollectJsFields 的 onToken → submitWithToken
+      setError(null);
+      setSubmitting(true);
+      if (!triggerCollectJs()) {
+        setError('Payment form not ready');
+        setSubmitting(false);
+      }
+    } else {
+      void submitWithToken(form.token);
     }
   };
 
@@ -120,7 +138,7 @@ export function CheckoutClient({ locale }: { locale: Locale }) {
   const canSubmit =
     form.email &&
     form.first_name &&
-    form.token &&
+    (collectJsEnabled || form.token) &&
     (fulfillment === 'pickup' || (form.street && form.city && form.zip));
 
   return (
@@ -180,8 +198,14 @@ export function CheckoutClient({ locale }: { locale: Locale }) {
 
         <section className="rounded-xl bg-white p-6 shadow-sm">
           <h2 className="mb-3 font-semibold">{t('payment')}</h2>
-          <input className={inputCls} placeholder={t('paymentToken')} value={form.token} onChange={(e) => set('token', e.target.value)} />
-          <p className="mt-2 text-xs text-gray-400">{t('cardHint')}</p>
+          {collectJsEnabled ? (
+            <CollectJsFields onToken={submitWithToken} onError={(m) => { setError(m); setSubmitting(false); }} />
+          ) : (
+            <>
+              <input className={inputCls} placeholder={t('paymentToken')} value={form.token} onChange={(e) => set('token', e.target.value)} />
+              <p className="mt-2 text-xs text-gray-400">{t('cardHint')}</p>
+            </>
+          )}
         </section>
 
         {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}

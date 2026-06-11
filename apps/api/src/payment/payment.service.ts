@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { MockPaymentProvider } from './mock.provider';
+import { ProChargeProvider } from './procharge.provider';
 import type { PaymentProvider } from './payment.provider';
 
 @Injectable()
@@ -11,13 +12,15 @@ export class PaymentService {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
     private readonly mock: MockPaymentProvider,
+    private readonly procharge: ProChargeProvider,
   ) {}
 
-  /** 选择支付 provider。当前仅 mock；真实网关接入后在此分支。 */
+  /** 选择支付 provider。PAYMENT_GATEWAY=procharge 走真实网关；默认 mock。 */
   private provider(): PaymentProvider {
     const gateway = this.config.get<string>('PAYMENT_GATEWAY') ?? 'mock';
     switch (gateway) {
-      // case 'authorize_net': return this.authorizeNet;
+      case 'procharge':
+        return this.procharge;
       default:
         return this.mock;
     }
