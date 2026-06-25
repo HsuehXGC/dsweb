@@ -3,7 +3,11 @@
 DS SmartLawn Service LLC 的全业务数字化系统：**客户端网站 + 统一管理后台 + 银行支付网关**，
 整合 CMS / CRM / ERP / 客服 / 工单 五大子系统，按角色权限隔离。
 
+登录：超管 admin@dssmartlawn.com / ChangeMe123!、会员 alice.reed@example.com / Demo1234!、技师 mike.tech@dssmartlawn.com / Tech1234!。
+
 需求文档见 [`docs/requirements/`](docs/requirements/)。
+
+> 📦 **项目交接？** 从 [`docs/HANDOVER.md`](docs/HANDOVER.md) 开始（配套 [架构](docs/ARCHITECTURE.md) / [运维](docs/OPERATIONS.md) / [支付对接](docs/PAYMENT.md)）。
 
 ## 技术栈
 

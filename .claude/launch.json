@@ -6,14 +6,16 @@
       "runtimeExecutable": "/Users/hsuehmini/.local/node/bin/node",
       "runtimeArgs": ["node_modules/next/dist/bin/next", "start", "-p", "3100"],
       "cwd": "apps/admin",
-      "port": 3100
+      "port": 3100,
+      "autoPort": false
     },
     {
       "name": "web",
       "runtimeExecutable": "/Users/hsuehmini/.local/node/bin/node",
       "runtimeArgs": ["node_modules/next/dist/bin/next", "start", "-p", "3000"],
       "cwd": "apps/web",
-      "port": 3000
+      "port": 3000,
+      "autoPort": false
     }
   ]
 }
